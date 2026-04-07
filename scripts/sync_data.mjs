@@ -28,8 +28,10 @@ const srcMind = path.join(repoRoot, "m.i.n.d");
 const srcEns = path.join(srcMind, "outputs", "ensemble_v2");
 const srcVis = path.join(srcMind, "outputs", "visuals");
 const srcBase = path.join(srcMind, "outputs");
+const srcVal3a = path.join(srcMind, "outputs", "validation_3a");
 
 const outData = path.join(here, "public", "mind_data");
+const outData3a = path.join(outData, "validation_3a");
 const outVis = path.join(here, "public", "visuals");
 
 const ensureDir = (p) => fs.mkdirSync(p, { recursive: true });
@@ -44,6 +46,7 @@ const copy = (src, dst) => {
 };
 
 ensureDir(outData);
+ensureDir(outData3a);
 ensureDir(outVis);
 
 // Grid CSVs
@@ -59,6 +62,30 @@ for (const f of [
 // Stats tests + baselines
 copy(path.join(srcEns, "stats_tests_confident_vs_best.csv"), path.join(outData, "stats_tests_confident_vs_best.csv"));
 copy(path.join(srcBase, "classification_results.csv"), path.join(outData, "classification_results.csv"));
+
+// IIIa validation CSVs
+copy(
+  path.join(
+    srcVal3a,
+    "ensemble_v2",
+    "models-LDA_SVM__weights-equal__feat-fbcsp__ens-softvote__tune-none__cal-sigmoid",
+    "threshold_metrics.csv"
+  ),
+  path.join(outData3a, "LDA_SVM_equal_grid.csv")
+);
+copy(
+  path.join(
+    srcVal3a,
+    "ensemble_v2",
+    "models-LDA_SVM__weights-baseline_subject__feat-fbcsp__ens-softvote__tune-none__cal-sigmoid",
+    "threshold_metrics.csv"
+  ),
+  path.join(outData3a, "LDA_SVM_baseline_subject_grid.csv")
+);
+copy(
+  path.join(srcVal3a, "baselines", "classification_results.csv"),
+  path.join(outData3a, "classification_results.csv")
+);
 
 // Keeper plots
 for (const f of [

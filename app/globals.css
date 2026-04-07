@@ -51,7 +51,7 @@ button { font-family: inherit; }
 /* ── TOPBAR ── */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px; height: 48px;
+  padding: 0 28px; height: 52px;
   border-bottom: 1px solid var(--border-md);
   background: rgba(7,9,10,0.96);
   position: sticky; top: 0; z-index: 100;
@@ -107,10 +107,10 @@ button { font-family: inherit; }
 /* ── SHELL ── */
 .shell {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 1fr 380px;
   gap: 1px;
   background: var(--border);
-  min-height: calc(100vh - 48px);
+  min-height: calc(100vh - 52px);
   position: relative; z-index: 1;
 }
 
@@ -119,7 +119,7 @@ button { font-family: inherit; }
 /* ── SECTION ── */
 .section {
   background: var(--panel);
-  padding: 18px 20px 20px;
+  padding: 22px 24px 24px;
   animation: fadeIn 0.3s ease both;
   min-width: 0;
 }
@@ -143,7 +143,7 @@ button { font-family: inherit; }
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--magenta);
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   display: flex; align-items: center; gap: 8px;
 }
 
@@ -156,7 +156,7 @@ button { font-family: inherit; }
 /* ── CONTROLS ── */
 .control-row {
   display: flex; align-items: center; gap: 14px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   min-width: 0;
 }
 
@@ -219,8 +219,8 @@ select:hover { border-color: var(--border-hi); }
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 12px 14px 8px;
-  margin-top: 4px;
+  padding: 14px 16px 10px;
+  margin-top: 8px;
   position: relative;
 }
 
@@ -241,15 +241,15 @@ svg.main-chart {
 .chart-x-label {
   text-align: right;
   font-size: 0.68rem; color: var(--text-2);
-  margin-top: 6px; letter-spacing: 0.08em;
+  margin-top: 10px; letter-spacing: 0.08em;
   width: min(100%, 680px);
   margin-left: auto;
 }
 
 /* ── ENSEMBLE CARDS ── */
 .ens-grid {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 8px; margin-top: 14px;
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 10px; margin-top: 18px;
 }
 
 .ens-card {
@@ -257,7 +257,7 @@ svg.main-chart {
   background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 12px;
+  padding: 14px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   position: relative;
@@ -280,7 +280,7 @@ svg.main-chart {
 
 .ens-name {
   font-size: 0.68rem; color: var(--text-3);
-  letter-spacing: 0.05em; margin-bottom: 6px;
+  letter-spacing: 0.05em; margin-bottom: 8px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -289,10 +289,18 @@ svg.main-chart {
   font-size: 2rem; line-height: 1;
   color: var(--cyan);
   letter-spacing: 0.02em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .ens-card:not(.active) .ens-value { color: var(--text-2); }
+
+.ens-card.baseline-card {
+  cursor: default;
+  border-color: rgba(232,37,122,0.26);
+  background: rgba(232,37,122,0.05);
+}
+
+.ens-card.baseline-card .ens-value { color: var(--magenta); }
 
 .ens-stats {
   font-size: 0.68rem; color: var(--text-3);
@@ -310,7 +318,7 @@ thead th {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-3);
-  padding: 0 10px 10px;
+  padding: 0 12px 12px;
   text-align: left;
   font-weight: 400;
   border-bottom: 1px solid var(--border);
@@ -321,7 +329,7 @@ tbody tr { transition: background 0.1s; }
 tbody tr:hover { background: rgba(0,210,185,0.03); }
 
 td {
-  padding: 8px 10px;
+  padding: 10px 12px;
   font-size: 0.82rem;
   color: var(--text-2);
   border-bottom: 1px solid rgba(0,210,185,0.04);
@@ -337,7 +345,7 @@ td.neg { color: var(--magenta); }
 
 .table-note {
   font-size: 0.68rem; color: var(--text-3);
-  margin-top: 12px; line-height: 1.7; font-style: italic;
+  margin-top: 14px; line-height: 1.8; font-style: italic;
 }
 
 .table-note code {
@@ -353,7 +361,7 @@ td.neg { color: var(--magenta); }
   border: 1px solid var(--border);
   border-radius: 2px;
   aspect-ratio: 16/9;
-  margin-top: 4px;
+  margin-top: 6px;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden; position: relative;
 }
@@ -363,7 +371,7 @@ td.neg { color: var(--magenta); }
 
 .demo-caption {
   font-size: 0.72rem; color: var(--text-2);
-  margin-top: 10px; line-height: 1.7;
+  margin-top: 12px; line-height: 1.8;
 }
 
 .demo-caption code {
@@ -376,8 +384,8 @@ td.neg { color: var(--magenta); }
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
 }
 
 .plot-title {
@@ -385,7 +393,7 @@ td.neg { color: var(--magenta); }
   font-size: 0.78rem; font-weight: 400;
   color: var(--text-2);
   letter-spacing: 0.03em;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .plotZoomBtn {
@@ -428,7 +436,7 @@ td.neg { color: var(--magenta); }
 .bottomPlotsGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 /* ── Modal zoom ── */
@@ -496,6 +504,16 @@ td.neg { color: var(--magenta); }
 
 @media (max-width: 1100px) {
   .shell { grid-template-columns: 1fr; }
+  .topbar { padding: 0 16px; height: 50px; }
+  .section { padding: 18px 16px 20px; }
+  .control-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .slider-readout {
+    min-width: 0;
+    width: 100%;
+  }
   .ens-grid { grid-template-columns: 1fr; }
   .bottomPlotsGrid { grid-template-columns: 1fr; }
 }

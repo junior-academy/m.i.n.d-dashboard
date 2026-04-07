@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DashboardData, GridPoint, StatsRow } from "@/lib/data";
 
-type Props = { data: DashboardData };
+type Props = { datasets: Record<string, DashboardData> };
 
 function round3(x: number) {
   if (!Number.isFinite(x)) return "NA";
@@ -43,20 +43,32 @@ function findStats(stats: StatsRow[], gridFile: string, thr: number): StatsRow |
   return stats.find((r) => r.grid_file === gridFile && r.threshold === thr);
 }
 
-export default function DashboardClient({ data }: Props) {
+export default function DashboardClient({ datasets }: Props) {
+  const datasetKeys = useMemo(() => Object.keys(datasets), [datasets]);
+  const [selectedDataset, setSelectedDataset] = useState<string>(() => (datasets["2a"] ? "2a" : (datasetKeys[0] ?? "2a")));
+  const emptyData: DashboardData = useMemo(
+    () => ({ grids: {}, baselines: [], stats: [], thresholds: [] }),
+    []
+  );
+  const data = datasets[selectedDataset] ?? datasets[datasetKeys[0]] ?? emptyData;
   const [threshold, setThreshold] = useState<number>(0.6);
-  const thr = useMemo(() => pickClosest(data.thresholds, threshold), [data.thresholds, threshold]);
-  const [selectedGrid, setSelectedGrid] = useState<string>(() => {
-    if (data.grids["LDA_SVM_equal_grid.csv"]) return "LDA_SVM_equal_grid.csv";
-    const keys = Object.keys(data.grids);
-    return keys[0] ?? "LDA_SVM_equal_grid.csv";
-  });
+  const [selectedGrid, setSelectedGrid] = useState<string>("LDA_SVM_equal_grid.csv");
   const [zoom, setZoom] = useState<{ open: boolean; src: string; label: string }>({
     open: false,
     src: "",
     label: ""
   });
 
+  useEffect(() => {
+    const nextGrid = data.grids["LDA_SVM_equal_grid.csv"] ? "LDA_SVM_equal_grid.csv" : (Object.keys(data.grids)[0] ?? "");
+    if (nextGrid) setSelectedGrid(nextGrid);
+    if (data.thresholds.length > 0) {
+      const defaultThr = data.thresholds.includes(0.6) ? 0.6 : data.thresholds[0];
+      setThreshold(defaultThr);
+    }
+  }, [data, selectedDataset]);
+
+  const thr = useMemo(() => pickClosest(data.thresholds, threshold), [data.thresholds, threshold]);
   const gridFiles = Object.keys(data.grids);
   const agg = useMemo(() => {
     const out: Record<string, ReturnType<typeof aggregateAt>> = {};
@@ -88,6 +100,14 @@ export default function DashboardClient({ data }: Props) {
       })
       .sort((a, b) => a.subject - b.subject);
   }, [baselineBySubject, data.grids, selectedGrid, thr]);
+
+  const baselineMeanAll = useMemo(() => {
+    return mean(data.baselines.map((b) => b.best_acc));
+  }, [data.baselines]);
+
+  const baselineMeanAtSelection = useMemo(() => {
+    return mean(perSubjectRows.map((r) => r.bestSingle));
+  }, [perSubjectRows]);
 
   const tradeoffSeries = useMemo(() => {
     const pts = data.grids[selectedGrid] ?? [];
@@ -168,7 +188,7 @@ export default function DashboardClient({ data }: Props) {
         </div>
         <div className="live-pill">
           <div className="live-dot" />
-          LIVE FROM `m.i.n.d/outputs/`
+          LIVE FROM `m.i.n.d/outputs/` · DATASET {selectedDataset.toUpperCase()}
         </div>
       </header>
 
@@ -177,6 +197,18 @@ export default function DashboardClient({ data }: Props) {
         <div className="col">
           <div className="section">
             <div className="sec-label">Operating Point</div>
+
+            <div className="control-row">
+              <div className="ctrl-label">Dataset</div>
+              <select value={selectedDataset} onChange={(e) => setSelectedDataset(e.target.value)}>
+                {datasetKeys.map((k) => (
+                  <option key={k} value={k}>
+                    {k === "2a" ? "BCI IV 2a" : k === "3a" ? "BCI IIIa" : k}
+                  </option>
+                ))}
+              </select>
+              <span className="ctrl-hint">switch source outputs</span>
+            </div>
 
             <div className="control-row">
               <div className="ctrl-label">Threshold</div>
@@ -272,6 +304,29 @@ export default function DashboardClient({ data }: Props) {
                   </>
                 ) : null}
 
+                {Number.isFinite(baselineMeanAtSelection) ? (
+                  <>
+                    <line
+                      x1="38"
+                      y1={270 - baselineMeanAtSelection * 220}
+                      x2="555"
+                      y2={270 - baselineMeanAtSelection * 220}
+                      stroke="rgba(232,37,122,0.55)"
+                      strokeWidth="1"
+                      strokeDasharray="5,4"
+                    />
+                    <text
+                      x="44"
+                      y={Math.max(14, 266 - baselineMeanAtSelection * 220)}
+                      fontSize="10"
+                      fill="var(--magenta)"
+                      fontFamily="var(--font-ui)"
+                    >
+                      baseline {baselineMeanAtSelection.toFixed(3)}
+                    </text>
+                  </>
+                ) : null}
+
                 {currentPoint ? (
                   <>
                     <line
@@ -325,6 +380,17 @@ export default function DashboardClient({ data }: Props) {
             </div>
 
             <div className="ens-grid">
+              <div className="ens-card baseline-card">
+                <div className="ens-name">Best-Single Baseline</div>
+                <div className="ens-value">{round3(baselineMeanAtSelection)}</div>
+                <div className="ens-stats">
+                  selected subjects <b>{perSubjectRows.length}</b>
+                  <br />
+                  global baseline mean <b>{round3(baselineMeanAll)}</b>
+                  <br />
+                  compare with selected ensemble card
+                </div>
+              </div>
               {gridFiles.map((f) => {
                 const a = agg[f];
                 const st = findStats(data.stats, f, thr);
@@ -372,7 +438,15 @@ export default function DashboardClient({ data }: Props) {
               </table>
             </div>
             <div className="table-note">
-              Stats tests sourced from <code>m.i.n.d/outputs/ensemble_v2/stats_tests_confident_vs_best.csv</code>
+              {selectedDataset === "2a" ? (
+                <>
+                  Stats tests sourced from <code>m.i.n.d/outputs/ensemble_v2/stats_tests_confident_vs_best.csv</code>
+                </>
+              ) : (
+                <>
+                  IIIa view sourced from <code>m.i.n.d/outputs/validation_3a/...</code> (stats tests CSV not generated).
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -35,6 +35,10 @@ export type DashboardData = {
   thresholds: number[];
 };
 
+export type DashboardBundle = {
+  datasets: Record<string, DashboardData>;
+};
+
 // In local dev, repo root is usually one level above `mind-dashboard/`.
 // In Vercel builds, we sync required artifacts into `public/mind_data/` during `prebuild`.
 const ROOT = process.cwd();
@@ -46,10 +50,13 @@ function readText(p: string): string {
   return fs.readFileSync(p, "utf8");
 }
 
-function loadGrid(fileName: string): GridPoint[] {
-  const primary = path.join(MIND_DIR, "outputs", "ensemble_v2", fileName);
-  const fallback = path.join(PUBLIC_DATA_DIR, fileName);
-  const p = fs.existsSync(primary) ? primary : fallback;
+function pickPrimaryOrFallback(primary: string, fallback: string): string {
+  return fs.existsSync(primary) ? primary : fallback;
+}
+
+function loadGridFromPaths(fileName: string, primary: string, fallback: string, ensembleName?: string): GridPoint[] {
+  const p = pickPrimaryOrFallback(primary, fallback);
+  if (!fs.existsSync(p)) return [];
   const rows = parseCSV(readText(p));
   return rows.map((r) => ({
     subject: toNumber(r["subject"]) as unknown as number,
@@ -57,14 +64,13 @@ function loadGrid(fileName: string): GridPoint[] {
     ensemble_acc_all: toNumber(r["ensemble_acc_all"]) as unknown as number,
     ensemble_acc_confident: toNumber(r["ensemble_acc_confident"]) as unknown as number,
     ensemble_coverage: toNumber(r["ensemble_coverage"]) as unknown as number,
-    ensemble_name: r["ensemble_name"] || fileName
+    ensemble_name: r["ensemble_name"] || ensembleName || fileName
   }));
 }
 
-function loadBaselines(): BaselineRow[] {
-  const primary = path.join(MIND_DIR, "outputs", "classification_results.csv");
-  const fallback = path.join(PUBLIC_DATA_DIR, "classification_results.csv");
-  const p = fs.existsSync(primary) ? primary : fallback;
+function loadBaselinesFromPaths(primary: string, fallback: string): BaselineRow[] {
+  const p = pickPrimaryOrFallback(primary, fallback);
+  if (!fs.existsSync(p)) return [];
   const rows = parseCSV(readText(p));
   return rows
     .map((r) => ({ subject: toNumber(r["subject"]), best_acc: toNumber(r["best_acc"]) }))
@@ -72,10 +78,8 @@ function loadBaselines(): BaselineRow[] {
     .map((r) => ({ subject: Number(r.subject), best_acc: Number(r.best_acc) }));
 }
 
-function loadStats(): StatsRow[] {
-  const primary = path.join(MIND_DIR, "outputs", "ensemble_v2", "stats_tests_confident_vs_best.csv");
-  const fallback = path.join(PUBLIC_DATA_DIR, "stats_tests_confident_vs_best.csv");
-  const p = fs.existsSync(primary) ? primary : fallback;
+function loadStatsFromPaths(primary: string, fallback: string): StatsRow[] {
+  const p = pickPrimaryOrFallback(primary, fallback);
   if (!fs.existsSync(p)) return [];
   const rows = parseCSV(readText(p));
   return rows.map((r) => ({
@@ -91,26 +95,83 @@ function loadStats(): StatsRow[] {
   }));
 }
 
-export function loadDashboardData(): DashboardData {
-  const gridFiles = [
-    "LDA_SVM_equal_grid.csv",
-    "LDA_SVM_baseline_subject_grid.csv",
-    "LDA_SVM_RF_global_grid.csv"
-  ];
-
-  const grids: Record<string, GridPoint[]> = {};
-  for (const f of gridFiles) grids[f] = loadGrid(f);
-
-  const thresholds = Array.from(
-    new Set(Object.values(grids).flatMap((pts) => pts.map((p) => p.threshold)))
-  )
+function thresholdsFromGrids(grids: Record<string, GridPoint[]>): number[] {
+  return Array.from(new Set(Object.values(grids).flatMap((pts) => pts.map((p) => p.threshold))))
     .filter((x) => Number.isFinite(x))
     .sort((a, b) => a - b);
+}
+
+function loadDataset2a(): DashboardData {
+  const gridFiles = ["LDA_SVM_equal_grid.csv", "LDA_SVM_baseline_subject_grid.csv", "LDA_SVM_RF_global_grid.csv"];
+  const grids: Record<string, GridPoint[]> = {};
+  for (const f of gridFiles) {
+    grids[f] = loadGridFromPaths(
+      f,
+      path.join(MIND_DIR, "outputs", "ensemble_v2", f),
+      path.join(PUBLIC_DATA_DIR, f)
+    );
+  }
 
   return {
     grids,
-    baselines: loadBaselines(),
-    stats: loadStats(),
-    thresholds
+    baselines: loadBaselinesFromPaths(
+      path.join(MIND_DIR, "outputs", "classification_results.csv"),
+      path.join(PUBLIC_DATA_DIR, "classification_results.csv")
+    ),
+    stats: loadStatsFromPaths(
+      path.join(MIND_DIR, "outputs", "ensemble_v2", "stats_tests_confident_vs_best.csv"),
+      path.join(PUBLIC_DATA_DIR, "stats_tests_confident_vs_best.csv")
+    ),
+    thresholds: thresholdsFromGrids(grids)
+  };
+}
+
+function loadDataset3a(): DashboardData {
+  const grids: Record<string, GridPoint[]> = {
+    "LDA_SVM_equal_grid.csv": loadGridFromPaths(
+      "LDA_SVM_equal_grid.csv",
+      path.join(
+        MIND_DIR,
+        "outputs",
+        "validation_3a",
+        "ensemble_v2",
+        "models-LDA_SVM__weights-equal__feat-fbcsp__ens-softvote__tune-none__cal-sigmoid",
+        "threshold_metrics.csv"
+      ),
+      path.join(PUBLIC_DATA_DIR, "validation_3a", "LDA_SVM_equal_grid.csv"),
+      "IIIa: LDA+SVM (equal)"
+    ),
+    "LDA_SVM_baseline_subject_grid.csv": loadGridFromPaths(
+      "LDA_SVM_baseline_subject_grid.csv",
+      path.join(
+        MIND_DIR,
+        "outputs",
+        "validation_3a",
+        "ensemble_v2",
+        "models-LDA_SVM__weights-baseline_subject__feat-fbcsp__ens-softvote__tune-none__cal-sigmoid",
+        "threshold_metrics.csv"
+      ),
+      path.join(PUBLIC_DATA_DIR, "validation_3a", "LDA_SVM_baseline_subject_grid.csv"),
+      "IIIa: LDA+SVM (subj-weights)"
+    )
+  };
+
+  return {
+    grids,
+    baselines: loadBaselinesFromPaths(
+      path.join(MIND_DIR, "outputs", "validation_3a", "baselines", "classification_results.csv"),
+      path.join(PUBLIC_DATA_DIR, "validation_3a", "classification_results.csv")
+    ),
+    stats: [],
+    thresholds: thresholdsFromGrids(grids)
+  };
+}
+
+export function loadDashboardBundle(): DashboardBundle {
+  return {
+    datasets: {
+      "2a": loadDataset2a(),
+      "3a": loadDataset3a()
+    }
   };
 }
