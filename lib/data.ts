@@ -54,6 +54,13 @@ function pickPrimaryOrFallback(primary: string, fallback: string): string {
   return fs.existsSync(primary) ? primary : fallback;
 }
 
+function pickFirstExisting(paths: string[]): string | null {
+  for (const p of paths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 function loadGridFromPaths(fileName: string, primary: string, fallback: string, ensembleName?: string): GridPoint[] {
   const p = pickPrimaryOrFallback(primary, fallback);
   if (!fs.existsSync(p)) return [];
@@ -81,6 +88,23 @@ function loadBaselinesFromPaths(primary: string, fallback: string): BaselineRow[
 function loadStatsFromPaths(primary: string, fallback: string): StatsRow[] {
   const p = pickPrimaryOrFallback(primary, fallback);
   if (!fs.existsSync(p)) return [];
+  const rows = parseCSV(readText(p));
+  return rows.map((r) => ({
+    grid_file: r["grid_file"] || "",
+    ensemble_name: r["ensemble_name"] || "",
+    threshold: Number(toNumber(r["threshold"])),
+    mean_coverage: Number(toNumber(r["mean_coverage"])),
+    mean_ens_conf_acc: Number(toNumber(r["mean_ens_conf_acc"])),
+    mean_best_single_acc: Number(toNumber(r["mean_best_single_acc"])),
+    mean_diff_conf_minus_best: Number(toNumber(r["mean_diff_conf_minus_best"])),
+    paired_t_pvalue: Number(toNumber(r["paired_t_pvalue"])),
+    levene_pvalue: Number(toNumber(r["levene_pvalue"]))
+  }));
+}
+
+function loadStatsFromAnyPaths(paths: string[]): StatsRow[] {
+  const p = pickFirstExisting(paths);
+  if (!p) return [];
   const rows = parseCSV(readText(p));
   return rows.map((r) => ({
     grid_file: r["grid_file"] || "",
@@ -162,7 +186,12 @@ function loadDataset3a(): DashboardData {
       path.join(MIND_DIR, "outputs", "validation_3a", "baselines", "classification_results.csv"),
       path.join(PUBLIC_DATA_DIR, "validation_3a", "classification_results.csv")
     ),
-    stats: [],
+    stats: loadStatsFromAnyPaths([
+      path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "stats_tests_confident_vs_best.csv"),
+      path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "stats_tests_confident_vs_best__equal.csv"),
+      path.join(PUBLIC_DATA_DIR, "validation_3a", "stats_tests_confident_vs_best.csv"),
+      path.join(PUBLIC_DATA_DIR, "validation_3a", "stats_tests_confident_vs_best__equal.csv")
+    ]),
     thresholds: thresholdsFromGrids(grids)
   };
 }

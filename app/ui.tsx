@@ -40,7 +40,14 @@ function aggregateAt(points: GridPoint[], thr: number) {
 }
 
 function findStats(stats: StatsRow[], gridFile: string, thr: number): StatsRow | undefined {
-  return stats.find((r) => r.grid_file === gridFile && r.threshold === thr);
+  const exact = stats.find((r) => r.grid_file === gridFile && r.threshold === thr);
+  if (exact) return exact;
+
+  // Fallback for stats CSVs that don't include `grid_file` (e.g., single-run validation exports).
+  const atThr = stats.filter((r) => r.threshold === thr);
+  if (atThr.length === 1) return atThr[0];
+  const blankGrid = atThr.find((r) => !r.grid_file);
+  return blankGrid;
 }
 
 export default function DashboardClient({ datasets }: Props) {
