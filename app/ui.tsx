@@ -157,276 +157,261 @@ export default function DashboardClient({ data }: Props) {
         </div>
       ) : null}
 
-      <div className="topbar">
-        <div className="topbar-title">
-          SIM_CORE <span>/</span> M.I.N.D RESULTS DASHBOARD
+      <header className="topbar">
+        <div className="topbar-left">
+          <div className="logo-mark" />
+          <div className="topbar-title">
+            <span className="highlight">SIM_CORE</span>
+            <span className="sep">/</span>
+            M.I.N.D RESULTS DASHBOARD
+          </div>
         </div>
-        <div className="live-badge">
+        <div className="live-pill">
           <div className="live-dot" />
           LIVE FROM `m.i.n.d/outputs/`
         </div>
-      </div>
+      </header>
 
       <div className="shell">
-        <div className="left-col">
-          <div className="panel fade-up">
-            <div className="panel-header">
-              <div className="panel-title">Operating Point</div>
+        {/* LEFT */}
+        <div className="col">
+          <div className="section">
+            <div className="sec-label">Operating Point</div>
+
+            <div className="control-row">
+              <div className="ctrl-label">Threshold</div>
+              <input
+                type="range"
+                min={minThr}
+                max={maxThr}
+                step={0.01}
+                value={threshold}
+                onChange={(e) => setThreshold(Number(e.target.value))}
+                style={{
+                  background: `linear-gradient(to right, var(--cyan) ${sliderPct}%, var(--border-md) ${sliderPct}%)`
+                }}
+              />
+              <div className="slider-readout">
+                selected: <strong>{thr.toFixed(2)}</strong> (snap)
+              </div>
             </div>
-            <div className="panel-body">
-              <div className="control-row">
-                <div className="control-label">Threshold</div>
-                <div className="slider-wrap">
-                  <input
-                    type="range"
-                    min={minThr}
-                    max={maxThr}
-                    step={0.01}
-                    value={threshold}
-                    onChange={(e) => setThreshold(Number(e.target.value))}
-                    style={{
-                      background: `linear-gradient(to right, var(--cyan) ${sliderPct}%, var(--border-hi) ${sliderPct}%)`
-                    }}
-                  />
-                </div>
-                <div className="slider-value">
-                  selected: <strong>{thr.toFixed(2)}</strong> (snap)
-                </div>
-              </div>
 
-              <div className="control-row">
-                <div className="control-label">Ensemble</div>
-                <select value={selectedGrid} onChange={(e) => setSelectedGrid(e.target.value)}>
-                  {gridFiles.map((f) => (
-                    <option key={f} value={f}>
-                      {f.replace("_grid.csv", "")}
-                    </option>
-                  ))}
-                </select>
-                <span className="tradeoff-label">tradeoff: accuracy vs coverage</span>
-              </div>
+            <div className="control-row">
+              <div className="ctrl-label">Ensemble</div>
+              <select value={selectedGrid} onChange={(e) => setSelectedGrid(e.target.value)}>
+                {gridFiles.map((f) => (
+                  <option key={f} value={f}>
+                    {f.replace("_grid.csv", "")}
+                  </option>
+                ))}
+              </select>
+              <span className="ctrl-hint">tradeoff: accuracy vs coverage</span>
+            </div>
 
-              <div className="chart-container">
-                <div className="chart-area-label">conf acc</div>
-                <svg className="main-chart" viewBox="0 0 540 190" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#00e6c8" stopOpacity="0.9" />
-                      <stop offset="100%" stopColor="#00e6c8" stopOpacity="0.5" />
-                    </linearGradient>
-                    <filter id="glow">
-                      <feGaussianBlur stdDeviation="2" result="blur" />
-                      <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                  </defs>
+            <div className="chart-wrap">
+              <div className="chart-y-label">CONF ACC</div>
+              <svg className="main-chart" viewBox="0 0 560 315" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="cyanFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--cyan)" stopOpacity="0.10" />
+                    <stop offset="100%" stopColor="var(--cyan)" stopOpacity="0" />
+                  </linearGradient>
+                  <filter id="softglow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="2.5" result="b" />
+                    <feMerge>
+                      <feMergeNode in="b" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
 
-                  {/* grid */}
-                  {[25, 70, 115, 160].map((y) => (
-                    <line key={y} x1="0" y1={y} x2="540" y2={y} stroke="rgba(0,230,200,0.06)" strokeWidth="1" />
-                  ))}
+                {[21, 95, 168, 242].map((y) => (
+                  <line key={y} x1="28" y1={y} x2="555" y2={y} stroke="rgba(0,210,185,0.05)" strokeWidth="1" />
+                ))}
 
-                  {/* y labels */}
-                  <text x="4" y="28" className="axis-label">
-                    1.0
-                  </text>
-                  <text x="4" y="73" className="axis-label">
-                    0.8
-                  </text>
-                  <text x="4" y="118" className="axis-label">
-                    0.6
-                  </text>
-                  <text x="4" y="163" className="axis-label">
-                    0.4
-                  </text>
+                <text x="0" y="28" fontSize="10" fill="var(--text-2)" fontFamily="var(--font-ui)">
+                  1.0
+                </text>
+                <text x="0" y="102" fontSize="10" fill="var(--text-2)" fontFamily="var(--font-ui)">
+                  0.8
+                </text>
+                <text x="0" y="176" fontSize="10" fill="var(--text-2)" fontFamily="var(--font-ui)">
+                  0.6
+                </text>
+                <text x="0" y="250" fontSize="10" fill="var(--text-2)" fontFamily="var(--font-ui)">
+                  0.4
+                </text>
 
-                  {/* tradeoff curve: x=coverage, y=conf acc */}
-                  {tradeoffSeries.length > 1 ? (
+                {tradeoffSeries.length > 1 ? (
+                  <>
+                    <polygon
+                      fill="url(#cyanFill)"
+                      points={[
+                        ...tradeoffSeries.map((p) => {
+                          const x = 38 + p.cov * 517;
+                          const y = 270 - p.acc * 220;
+                          return `${x.toFixed(1)},${y.toFixed(1)}`;
+                        }),
+                        "555,315",
+                        "38,315"
+                      ].join(" ")}
+                    />
                     <polyline
                       fill="none"
-                      stroke="url(#lineGrad)"
-                      strokeWidth="2"
-                      filter="url(#glow)"
+                      stroke="var(--cyan)"
+                      strokeWidth="1.5"
+                      filter="url(#softglow)"
                       points={tradeoffSeries
                         .map((p) => {
-                          const x = 30 + p.cov * 480;
-                          const y = 170 - p.acc * 145;
+                          const x = 38 + p.cov * 517;
+                          const y = 270 - p.acc * 220;
                           return `${x.toFixed(1)},${y.toFixed(1)}`;
                         })
                         .join(" ")}
                     />
-                  ) : null}
+                  </>
+                ) : null}
 
-                  {/* current threshold marker */}
-                  {currentPoint ? (
-                    <>
-                      <line
-                        x1={30 + currentPoint.cov * 480}
-                        y1="18"
-                        x2={30 + currentPoint.cov * 480}
-                        y2="170"
-                        stroke="rgba(255,45,155,0.40)"
-                        strokeWidth="1"
-                        strokeDasharray="3,3"
-                      />
-                      <circle
-                        cx={30 + currentPoint.cov * 480}
-                        cy={170 - currentPoint.acc * 145}
-                        r="5"
-                        fill="var(--magenta)"
-                        filter="url(#glow)"
-                      />
-                      <circle
-                        cx={30 + currentPoint.cov * 480}
-                        cy={170 - currentPoint.acc * 145}
-                        r="9"
-                        fill="var(--magenta)"
-                        opacity="0.15"
-                      />
-                      <rect
-                        x={Math.max(6, Math.min(480, 30 + currentPoint.cov * 480 - 27))}
-                        y="18"
-                        width="54"
-                        height="16"
-                        rx="2"
-                        fill="var(--mag-dim)"
-                        stroke="var(--magenta)"
-                        strokeWidth="0.8"
-                      />
-                      <text
-                        x={Math.max(33, Math.min(507, 30 + currentPoint.cov * 480))}
-                        y="30"
-                        textAnchor="middle"
-                        fontSize="9"
-                        fill="var(--magenta)"
-                        fontFamily="var(--font-head)"
-                      >
-                        t={thr.toFixed(2)}
-                      </text>
-                    </>
-                  ) : null}
+                {currentPoint ? (
+                  <>
+                    <line
+                      x1={38 + currentPoint.cov * 517}
+                      y1="16"
+                      x2={38 + currentPoint.cov * 517}
+                      y2="290"
+                      stroke="rgba(232,37,122,0.30)"
+                      strokeWidth="1"
+                      strokeDasharray="4,3"
+                    />
+                    <circle
+                      cx={38 + currentPoint.cov * 517}
+                      cy={270 - currentPoint.acc * 220}
+                      r="4.5"
+                      fill="var(--magenta)"
+                      filter="url(#softglow)"
+                    />
+                    <circle
+                      cx={38 + currentPoint.cov * 517}
+                      cy={270 - currentPoint.acc * 220}
+                      r="9"
+                      fill="var(--magenta)"
+                      fillOpacity="0.10"
+                    />
+                    <rect
+                      x={Math.max(28, Math.min(491, 38 + currentPoint.cov * 517 - 32))}
+                      y="16"
+                      width="64"
+                      height="24"
+                      rx="2"
+                      fill="var(--panel)"
+                      stroke="var(--magenta)"
+                      strokeWidth="0.8"
+                      fillOpacity="0.95"
+                    />
+                    <text
+                      x={38 + currentPoint.cov * 517}
+                      y="33"
+                      textAnchor="middle"
+                      fontSize="11"
+                      fill="var(--magenta)"
+                      fontFamily="var(--font-ui)"
+                    >
+                      t = {thr.toFixed(2)}
+                    </text>
+                  </>
+                ) : null}
+              </svg>
+              <div className="chart-x-label">coverage →</div>
+            </div>
 
-                  <text x="480" y="185" className="axis-label">
-                    coverage →
-                  </text>
-                </svg>
-              </div>
-
-              <div className="ens-grid">
-                {gridFiles.map((f) => {
-                  const a = agg[f];
-                  const st = findStats(data.stats, f, thr);
-                  const active = f === selectedGrid;
-                  return (
-                    <button key={f} className={`ens-card ${active ? "active" : ""}`} onClick={() => setSelectedGrid(f)}>
-                      <div className="ens-name">{f.replace("_grid.csv", "")}</div>
-                      <div className="ens-value">{round3(a.meanConfAcc)}</div>
-                      <div className="ens-stats">
-                        coverage: <span>{round3(a.meanCoverage)}</span>
-                        <br />
-                        all-acc: <span>{round3(a.meanAllAcc)}</span>
-                        <br />
-                        t p: <span>{st ? round3(st.paired_t_pvalue) : "NA"}</span> | Levene p:{" "}
-                        <span>{st ? round3(st.levene_pvalue) : "NA"}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="ens-grid">
+              {gridFiles.map((f) => {
+                const a = agg[f];
+                const st = findStats(data.stats, f, thr);
+                const active = f === selectedGrid;
+                return (
+                  <button key={f} className={`ens-card ${active ? "active" : ""}`} onClick={() => setSelectedGrid(f)}>
+                    <div className="ens-name">{f.replace("_grid.csv", "")}</div>
+                    <div className="ens-value">{round3(a.meanConfAcc)}</div>
+                    <div className="ens-stats">
+                      coverage <b>{round3(a.meanCoverage)}</b>
+                      <br />
+                      all-acc <b>{round3(a.meanAllAcc)}</b>
+                      <br />t p <b>{st ? round3(st.paired_t_pvalue) : "NA"}</b> · Levene <b>{st ? round3(st.levene_pvalue) : "NA"}</b>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="panel fade-up">
-            <div className="panel-header">
-              <div className="panel-title">Per–Subject (Selected Ensemble)</div>
-            </div>
-            <div className="panel-body" style={{ paddingBottom: 6 }}>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Subject</th>
-                      <th>Best-Single</th>
-                      <th>Ens Conf Acc</th>
-                      <th>Coverage</th>
-                      <th>Δ Conf – Best</th>
+          <div className="section" style={{ flex: 1 }}>
+            <div className="sec-label">Per-Subject · Selected Ensemble</div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Best-Single</th>
+                    <th>Ens Conf Acc</th>
+                    <th>Coverage</th>
+                    <th>Δ Conf – Best</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {perSubjectRows.map((r) => (
+                    <tr key={r.subject}>
+                      <td className="subj">S{String(r.subject).padStart(2, "0")}</td>
+                      <td>{round3(r.bestSingle)}</td>
+                      <td>{round3(r.confAcc)}</td>
+                      <td>{round3(r.coverage)}</td>
+                      <td className={r.diff >= 0 ? "pos" : "neg"}>{round3(r.diff)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {perSubjectRows.map((r) => (
-                      <tr key={r.subject}>
-                        <td>S{String(r.subject).padStart(2, "0")}</td>
-                        <td>{round3(r.bestSingle)}</td>
-                        <td>{round3(r.confAcc)}</td>
-                        <td>{round3(r.coverage)}</td>
-                        <td className={r.diff >= 0 ? "delta-pos" : "delta-neg"}>{round3(r.diff)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="table-note">
-                Stats tests come from <code>m.i.n.d/outputs/ensemble_v2/stats_tests_confident_vs_best.csv</code>.
-              </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="table-note">
+              Stats tests sourced from <code>m.i.n.d/outputs/ensemble_v2/stats_tests_confident_vs_best.csv</code>
             </div>
           </div>
         </div>
 
-        <div className="right-col">
-          <div className="panel fade-up">
-            <div className="panel-header">
-              <div className="panel-title">Pygame Demo</div>
+        {/* RIGHT */}
+        <div className="col">
+          <div className="section">
+            <div className="sec-label">Pygame Demo</div>
+            <div className="demo-frame">
+              <img src="/demo.svg" alt="Pygame demo placeholder" />
             </div>
-            <div className="panel-body">
-              <div className="demo-preview">
-                <img src="/demo.svg" alt="Pygame demo placeholder" />
-              </div>
-              <div className="demo-note">
-                Replace <code>mind-dashboard/public/demo.svg</code> with a real <code>demo.gif</code> or{" "}
-                <code>demo.mp4</code> and update this panel.
-              </div>
+            <div className="demo-caption">
+              Replace <code>public/demo.svg</code> with <code>demo.gif</code> or <code>demo.mp4</code> and update this panel.
             </div>
           </div>
 
-          <div className="panel fade-up">
-            <div className="panel-header">
-              <div className="panel-title">Keeper Plots (Featured)</div>
-            </div>
-            <div className="panel-body" style={{ paddingTop: 6 }}>
-              {rightPlots.map(([label, file]) => (
-                <div key={file} className="plot-card">
-                  <div className="plot-title">{label}</div>
-                  <button
-                    className="plotZoomBtn"
-                    onClick={() => setZoom({ open: true, src: `/visuals/${encodeURIComponent(file)}`, label })}
-                    aria-label={`Zoom plot: ${label}`}
-                  >
-                    <img className="plot-img" src={`/visuals/${encodeURIComponent(file)}`} alt={label} />
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div className="section" style={{ flex: 1 }}>
+            <div className="sec-label">Keeper Plots</div>
+            {rightPlots.map(([label, file]) => (
+              <div key={file} className="plot-item">
+                <div className="plot-title">{label}</div>
+                <button className="plotZoomBtn" onClick={() => setZoom({ open: true, src: `/visuals/${encodeURIComponent(file)}`, label })}>
+                  <img className="plot-img" src={`/visuals/${encodeURIComponent(file)}`} alt={label} />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="bottomPlotsWrap">
-        <div className="panel fade-up">
-          <div className="panel-header">
-            <div className="panel-title">Keeper Plots (All)</div>
-          </div>
-          <div className="panel-body" style={{ paddingTop: 6 }}>
+      <div className="bottomPlots">
+        <div className="bottomPlotsInner">
+          <div className="section">
+            <div className="sec-label">More Keeper Plots</div>
             <div className="bottomPlotsGrid">
               {bottomPlots.map(([label, file]) => (
-                <div key={file} className="plot-card">
+                <div key={file} className="plot-item">
                   <div className="plot-title">{label}</div>
-                  <button
-                    className="plotZoomBtn"
-                    onClick={() => setZoom({ open: true, src: `/visuals/${encodeURIComponent(file)}`, label })}
-                    aria-label={`Zoom plot: ${label}`}
-                  >
+                  <button className="plotZoomBtn" onClick={() => setZoom({ open: true, src: `/visuals/${encodeURIComponent(file)}`, label })}>
                     <img className="plot-img" src={`/visuals/${encodeURIComponent(file)}`} alt={label} />
                   </button>
                 </div>
