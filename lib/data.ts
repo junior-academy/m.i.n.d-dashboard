@@ -119,6 +119,20 @@ function loadStatsFromAnyPaths(paths: string[]): StatsRow[] {
   }));
 }
 
+function mergeStats(parts: StatsRow[][]): StatsRow[] {
+  const out: StatsRow[] = [];
+  const seen = new Set<string>();
+  for (const rows of parts) {
+    for (const r of rows) {
+      const key = `${r.grid_file}::${r.ensemble_name}::${r.threshold}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(r);
+    }
+  }
+  return out;
+}
+
 function thresholdsFromGrids(grids: Record<string, GridPoint[]>): number[] {
   return Array.from(new Set(Object.values(grids).flatMap((pts) => pts.map((p) => p.threshold))))
     .filter((x) => Number.isFinite(x))
@@ -180,18 +194,24 @@ function loadDataset3a(): DashboardData {
     )
   };
 
+  const statsEqual = loadStatsFromAnyPaths([
+    path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "stats_tests_confident_vs_best__equal.csv"),
+    path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "stats_tests_confident_vs_best.csv"),
+    path.join(PUBLIC_DATA_DIR, "validation_3a", "stats_tests_confident_vs_best__equal.csv"),
+    path.join(PUBLIC_DATA_DIR, "validation_3a", "stats_tests_confident_vs_best.csv")
+  ]);
+  const statsSubj = loadStatsFromAnyPaths([
+    path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "stats_tests_confident_vs_best__baseline_subject.csv"),
+    path.join(PUBLIC_DATA_DIR, "validation_3a", "stats_tests_confident_vs_best__baseline_subject.csv")
+  ]);
+
   return {
     grids,
     baselines: loadBaselinesFromPaths(
       path.join(MIND_DIR, "outputs", "validation_3a", "baselines", "classification_results.csv"),
       path.join(PUBLIC_DATA_DIR, "validation_3a", "classification_results.csv")
     ),
-    stats: loadStatsFromAnyPaths([
-      path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "stats_tests_confident_vs_best.csv"),
-      path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "stats_tests_confident_vs_best__equal.csv"),
-      path.join(PUBLIC_DATA_DIR, "validation_3a", "stats_tests_confident_vs_best.csv"),
-      path.join(PUBLIC_DATA_DIR, "validation_3a", "stats_tests_confident_vs_best__equal.csv")
-    ]),
+    stats: mergeStats([statsEqual, statsSubj]),
     thresholds: thresholdsFromGrids(grids)
   };
 }
