@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { DashboardData, GridPoint, StatsRow } from "@/lib/data";
+import type { DashboardData, GridPoint, MoabbPipelineStatsRow, MoabbPerSubjectRow, MoabbSummaryRow, StatsRow } from "@/lib/data";
 
 type Props = { datasets: Record<string, DashboardData> };
 
@@ -50,9 +50,184 @@ function findStats(stats: StatsRow[], gridFile: string, thr: number): StatsRow |
   return blankGrid;
 }
 
+function datasetLabel(k: string): string {
+  if (k === "2a") return "BCI IV 2a";
+  if (k === "3a") return "BCI IIIa";
+  if (k === "moabb_ensemble_bnci2014_001") return "MOABB Ensemble (BNCI2014_001, 4-class)";
+  if (k === "moabb_ensemble_physionetmi") return "MOABB Ensemble (PhysionetMI, 2-class)";
+  return k;
+}
+
+function MoabbPanel(props: {
+  datasetKeys: string[];
+  selectedDataset: string;
+  setSelectedDataset: (k: string) => void;
+  moabb: { summary: MoabbSummaryRow[]; per_subject: MoabbPerSubjectRow[]; pipeline_stats: MoabbPipelineStatsRow[] };
+}) {
+  const { datasetKeys, selectedDataset, setSelectedDataset, moabb } = props;
+
+  const pipelines = useMemo(() => {
+    const names = Array.from(new Set(moabb.per_subject.map((r) => r.pipeline))).filter((x) => x);
+    names.sort();
+    return names;
+  }, [moabb.per_subject]);
+
+  const subjects = useMemo(() => {
+    const ids = Array.from(new Set(moabb.per_subject.map((r) => r.subject))).filter((x) => Number.isFinite(x));
+    ids.sort((a, b) => a - b);
+    return ids;
+  }, [moabb.per_subject]);
+
+  const byKey = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of moabb.per_subject) m.set(`${r.subject}::${r.pipeline}`, r.score_mean);
+    return m;
+  }, [moabb.per_subject]);
+
+  const primaryComparison = useMemo(() => {
+    const direct = moabb.pipeline_stats.find(
+      (r) =>
+        (r.pipeline_a === "CSP+LDA" && r.pipeline_b === "CSP+SVM") ||
+        (r.pipeline_a === "CSP+SVM" && r.pipeline_b === "CSP+LDA")
+    );
+    return direct ?? moabb.pipeline_stats[0];
+  }, [moabb.pipeline_stats]);
+
+  return (
+    <>
+      <header className="topbar">
+        <div className="topbar-left">
+          <div className="logo-mark" />
+          <div className="topbar-title">
+            <span className="highlight">JR-ACADEMY-6857</span>
+            <span className="sep">/</span>
+            M.I.N.D RESULTS DASHBOARD
+          </div>
+        </div>
+        <div className="live-pill">
+          <div className="live-dot" />
+          LIVE FROM `m.i.n.d/outputs/` · DATASET {selectedDataset.toUpperCase()}
+        </div>
+      </header>
+
+      <div className="shell shellSingle">
+        <div className="col">
+          <div className="section">
+            <div className="sec-label">External Validation</div>
+
+            <div className="control-row">
+              <div className="ctrl-label">Dataset</div>
+              <select value={selectedDataset} onChange={(e) => setSelectedDataset(e.target.value)}>
+                {datasetKeys.map((k) => (
+                  <option key={k} value={k}>
+                    {datasetLabel(k)}
+                  </option>
+                ))}
+              </select>
+              <span className="ctrl-hint">switch source outputs</span>
+            </div>
+
+            <div className="table-note" style={{ marginTop: 10 }}>
+              MOABB PhysionetMI external validation uses per-subject CV accuracy for <code>CSP+LDA</code> and <code>CSP+SVM</code>.
+            </div>
+
+            {primaryComparison ? (
+              <div className="ens-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginTop: 14 }}>
+                <div className="ens-card active" style={{ cursor: "default" }}>
+                  <div className="ens-name">Paired t-test p</div>
+                  <div className="ens-value">{round3(primaryComparison.paired_t_pvalue)}</div>
+                  <div className="ens-stats">
+                    diff <b>{round3(primaryComparison.mean_diff_a_minus_b)}</b>
+                    <br />d <b>{round3(primaryComparison.paired_cohens_d)}</b>
+                  </div>
+                </div>
+                <div className="ens-card active" style={{ cursor: "default" }}>
+                  <div className="ens-name">Levene p</div>
+                  <div className="ens-value">{round3(primaryComparison.levene_pvalue)}</div>
+                  <div className="ens-stats">
+                    {primaryComparison.pipeline_a} vs <b>{primaryComparison.pipeline_b}</b>
+                    <br />n <b>{primaryComparison.n_subjects_used}</b>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="section" style={{ flex: 1 }}>
+            <div className="sec-label">MOABB Results</div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pipeline</th>
+                    <th>Mean Acc</th>
+                    <th>SD</th>
+                    <th>N</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {moabb.summary.map((r) => (
+                    <tr key={r.pipeline}>
+                      <td className="subj">{r.pipeline}</td>
+                      <td>{round3(r.score_mean)}</td>
+                      <td>{round3(r.score_sd)}</td>
+                      <td>{Number.isFinite(r.n_subjects) ? r.n_subjects : "NA"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {subjects.length > 0 && pipelines.length > 0 ? (
+                <>
+                  <div className="table-note" style={{ marginTop: 14 }}>
+                    Per-subject mean accuracy (CV mean). Diff shown as <code>CSP+LDA − CSP+SVM</code>.
+                  </div>
+                  <table style={{ marginTop: 6 }}>
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        {pipelines.map((p) => (
+                          <th key={p}>{p}</th>
+                        ))}
+                        <th>Δ LDA−SVM</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subjects.map((s) => {
+                        const lda = byKey.get(`${s}::CSP+LDA`);
+                        const svm = byKey.get(`${s}::CSP+SVM`);
+                        const diff = Number.isFinite(lda) && Number.isFinite(svm) ? Number(lda) - Number(svm) : Number.NaN;
+                        return (
+                          <tr key={s}>
+                            <td className="subj">S{String(s).padStart(2, "0")}</td>
+                            {pipelines.map((p) => {
+                              const v = byKey.get(`${s}::${p}`);
+                              return <td key={p}>{Number.isFinite(v) ? round3(Number(v)) : "NA"}</td>;
+                            })}
+                            <td className={diff >= 0 ? "pos" : "neg"}>{Number.isFinite(diff) ? round3(diff) : "NA"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              ) : null}
+            </div>
+
+            <div className="table-note">
+              MOABB PhysionetMI view sourced from <code>m.i.n.d/outputs/moabb/physionetmi/</code>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function DashboardClient({ datasets }: Props) {
   const datasetKeys = useMemo(() => Object.keys(datasets), [datasets]);
   const [selectedDataset, setSelectedDataset] = useState<string>(() => (datasets["2a"] ? "2a" : (datasetKeys[0] ?? "2a")));
+  const [activeTab, setActiveTab] = useState<"overview" | "graphs">("overview");
   const emptyData: DashboardData = useMemo(
     () => ({ grids: {}, baselines: [], stats: [], thresholds: [] }),
     []
@@ -158,6 +333,147 @@ export default function DashboardClient({ datasets }: Props) {
     return Math.max(0, Math.min(100, p));
   }, [maxThr, minThr, threshold]);
 
+  const hideKeeperPlots = selectedDataset.startsWith("moabb_ensemble");
+  const visualsBase = selectedDataset.startsWith("moabb_ensemble")
+    ? `/visuals/${encodeURIComponent(selectedDataset)}/`
+    : selectedDataset === "3a"
+      ? "/visuals/validation_3a/"
+      : "/visuals/";
+
+  if (data.moabb) {
+    return (
+      <MoabbPanel
+        datasetKeys={datasetKeys}
+        selectedDataset={selectedDataset}
+        setSelectedDataset={setSelectedDataset}
+        moabb={data.moabb}
+      />
+    );
+  }
+
+  if (activeTab === "graphs") {
+    const base = visualsBase;
+    return (
+      <>
+        {zoom.open ? (
+          <div
+            className="modalBackdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Zoomed plot: ${zoom.label}`}
+            onClick={() => setZoom({ open: false, src: "", label: "" })}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setZoom({ open: false, src: "", label: "" });
+            }}
+            tabIndex={-1}
+          >
+            <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+              <div className="modalHeader">
+                <div className="modalTitle">{zoom.label}</div>
+                <button className="modalClose" onClick={() => setZoom({ open: false, src: "", label: "" })}>
+                  CLOSE
+                </button>
+              </div>
+              <img className="modalImg" src={zoom.src} alt={zoom.label} />
+            </div>
+          </div>
+        ) : null}
+
+        <header className="topbar">
+          <div className="topbar-left">
+            <div className="logo-mark" />
+            <div className="topbar-title">
+              <span className="highlight">JR-ACADEMY-6857</span>
+              <span className="sep">/</span>
+              M.I.N.D RESULTS DASHBOARD
+            </div>
+          </div>
+          <div className="live-pill">
+            <div className="live-dot" />
+            LIVE FROM `m.i.n.d/outputs/` · DATASET {selectedDataset.toUpperCase()}
+          </div>
+        </header>
+
+        <div className="tabsRow">
+          <button className="tabBtn" onClick={() => setActiveTab("overview")}>
+            OVERVIEW
+          </button>
+          <button className="tabBtn tabBtnActive" onClick={() => setActiveTab("graphs")}>
+            GRAPHS
+          </button>
+          <div className="tabsSpacer" />
+          <div className="tabsRight">
+            <span className="tabsLabel">Dataset</span>
+            <select value={selectedDataset} onChange={(e) => setSelectedDataset(e.target.value)}>
+              {datasetKeys.map((k) => (
+                <option key={k} value={k}>
+                  {datasetLabel(k)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="graphsShell">
+          <div className="graphsDemo">
+            <div className="sec-label">Pygame Demo</div>
+            <div className="demo-frame demo-frame-lg">
+              <video
+                className="demo-video"
+                src="/demo/demo.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+              />
+            </div>
+            <div className="demo-caption">
+              Demo video served from <code>public/demo/demo.mp4</code>.
+            </div>
+          </div>
+
+          <div className="graphsKey">
+            <div className="sec-label">Key Plots</div>
+            <div className="graphsKeyGrid">
+              {rightPlots.map(([label, file]) => (
+                <div key={file} className="plot-item">
+                  <div className="plot-title">{label}</div>
+                  <button
+                    className="plotZoomBtn"
+                    onClick={() => setZoom({ open: true, src: `${base}${encodeURIComponent(file)}`, label })}
+                  >
+                    <img className="plot-img" src={`${base}${encodeURIComponent(file)}`} alt={label} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="table-note" style={{ marginTop: 10 }}>
+              Click any plot to zoom.
+            </div>
+          </div>
+
+          <div className="graphsBottom">
+            <div className="sec-label">More Plots</div>
+            <div className="graphsBottomGrid">
+              {bottomPlots.map(([label, file]) => (
+                <div key={file} className="plot-item">
+                  <div className="plot-title">{label}</div>
+                  <button
+                    className="plotZoomBtn"
+                    onClick={() => setZoom({ open: true, src: `${base}${encodeURIComponent(file)}`, label })}
+                  >
+                    <img className="plot-img" src={`${base}${encodeURIComponent(file)}`} alt={label} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {zoom.open ? (
@@ -188,7 +504,7 @@ export default function DashboardClient({ datasets }: Props) {
         <div className="topbar-left">
           <div className="logo-mark" />
           <div className="topbar-title">
-            <span className="highlight">SIM_CORE</span>
+            <span className="highlight">JR-ACADEMY-6857</span>
             <span className="sep">/</span>
             M.I.N.D RESULTS DASHBOARD
           </div>
@@ -199,7 +515,16 @@ export default function DashboardClient({ datasets }: Props) {
         </div>
       </header>
 
-      <div className="shell">
+      <div className="tabsRow">
+        <button className="tabBtn tabBtnActive" onClick={() => setActiveTab("overview")}>
+          OVERVIEW
+        </button>
+        <button className="tabBtn" onClick={() => setActiveTab("graphs")}>
+          GRAPHS
+        </button>
+      </div>
+
+      <div className="shell shellSingle">
         {/* LEFT */}
         <div className="col">
           <div className="section">
@@ -210,7 +535,7 @@ export default function DashboardClient({ datasets }: Props) {
               <select value={selectedDataset} onChange={(e) => setSelectedDataset(e.target.value)}>
                 {datasetKeys.map((k) => (
                   <option key={k} value={k}>
-                    {k === "2a" ? "BCI IV 2a" : k === "3a" ? "BCI IIIa" : k}
+                    {datasetLabel(k)}
                   </option>
                 ))}
               </select>
@@ -449,54 +774,15 @@ export default function DashboardClient({ datasets }: Props) {
                 <>
                   Stats tests sourced from <code>m.i.n.d/outputs/ensemble_v2/stats_tests_confident_vs_best.csv</code>
                 </>
-              ) : (
+              ) : selectedDataset === "3a" ? (
                 <>
-                  IIIa view sourced from <code>m.i.n.d/outputs/validation_3a/...</code> (stats tests CSV not generated).
+                  IIIa view sourced from <code>m.i.n.d/outputs/validation_3a/...</code>.
                 </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT */}
-        <div className="col">
-          <div className="section">
-            <div className="sec-label">Pygame Demo</div>
-            <div className="demo-frame">
-              <img src="/demo.svg" alt="Pygame demo placeholder" />
-            </div>
-            <div className="demo-caption">
-              Replace <code>public/demo.svg</code> with <code>demo.gif</code> or <code>demo.mp4</code> and update this panel.
-            </div>
-          </div>
-
-          <div className="section" style={{ flex: 1 }}>
-            <div className="sec-label">Keeper Plots</div>
-            {rightPlots.map(([label, file]) => (
-              <div key={file} className="plot-item">
-                <div className="plot-title">{label}</div>
-                <button className="plotZoomBtn" onClick={() => setZoom({ open: true, src: `/visuals/${encodeURIComponent(file)}`, label })}>
-                  <img className="plot-img" src={`/visuals/${encodeURIComponent(file)}`} alt={label} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bottomPlots">
-        <div className="bottomPlotsInner">
-          <div className="section">
-            <div className="sec-label">More Keeper Plots</div>
-            <div className="bottomPlotsGrid">
-              {bottomPlots.map(([label, file]) => (
-                <div key={file} className="plot-item">
-                  <div className="plot-title">{label}</div>
-                  <button className="plotZoomBtn" onClick={() => setZoom({ open: true, src: `/visuals/${encodeURIComponent(file)}`, label })}>
-                    <img className="plot-img" src={`/visuals/${encodeURIComponent(file)}`} alt={label} />
-                  </button>
-                </div>
-              ))}
+              ) : selectedDataset.startsWith("moabb_ensemble") ? (
+                <>
+                  MOABB ensemble view sourced from <code>m.i.n.d/outputs/moabb_ensemble/...</code>.
+                </>
+              ) : null}
             </div>
           </div>
         </div>

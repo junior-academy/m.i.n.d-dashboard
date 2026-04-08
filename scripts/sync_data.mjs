@@ -29,10 +29,12 @@ const srcEns = path.join(srcMind, "outputs", "ensemble_v2");
 const srcVis = path.join(srcMind, "outputs", "visuals");
 const srcBase = path.join(srcMind, "outputs");
 const srcVal3a = path.join(srcMind, "outputs", "validation_3a");
+const srcVal3aVis = path.join(srcVal3a, "visuals");
 
 const outData = path.join(here, "public", "mind_data");
 const outData3a = path.join(outData, "validation_3a");
 const outVis = path.join(here, "public", "visuals");
+const outVis3a = path.join(outVis, "validation_3a");
 
 const ensureDir = (p) => fs.mkdirSync(p, { recursive: true });
 const copy = (src, dst) => {
@@ -48,6 +50,7 @@ const copy = (src, dst) => {
 ensureDir(outData);
 ensureDir(outData3a);
 ensureDir(outVis);
+ensureDir(outVis3a);
 
 // Grid CSVs
 for (const f of [
@@ -87,6 +90,20 @@ copy(
   path.join(outData3a, "classification_results.csv")
 );
 
+// IIIa stats tests (both variants + combined)
+copy(
+  path.join(srcVal3a, "ensemble_v2", "stats_tests_confident_vs_best__equal.csv"),
+  path.join(outData3a, "stats_tests_confident_vs_best__equal.csv")
+);
+copy(
+  path.join(srcVal3a, "ensemble_v2", "stats_tests_confident_vs_best__baseline_subject.csv"),
+  path.join(outData3a, "stats_tests_confident_vs_best__baseline_subject.csv")
+);
+copy(
+  path.join(srcVal3a, "ensemble_v2", "stats_tests_confident_vs_best.csv"),
+  path.join(outData3a, "stats_tests_confident_vs_best.csv")
+);
+
 // Keeper plots
 for (const f of [
   "tradeoff_conf_acc_vs_coverage.png",
@@ -98,6 +115,19 @@ for (const f of [
   "ensemble_coverage_vs_threshold.png"
 ]) {
   copy(path.join(srcVis, f), path.join(outVis, f));
+}
+
+// IIIa keeper plots (separate folder so 2a and 3a can coexist)
+for (const f of [
+  "tradeoff_conf_acc_vs_coverage.png",
+  "ensemble_accuracy_confident_vs_threshold.png",
+  "paired_ttest_pvalue_vs_threshold.png",
+  "mean_diff_conf_vs_best_vs_threshold.png",
+  "per_subject_conf_acc_t0.60.png",
+  "heatmap_ablation_global_diff_conf_minus_best.png",
+  "ensemble_coverage_vs_threshold.png"
+]) {
+  copy(path.join(srcVal3aVis, f), path.join(outVis3a, f));
 }
 
 console.log("[sync] done");

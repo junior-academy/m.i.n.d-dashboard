@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Bebas_Neue, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
 export const metadata = {
@@ -7,28 +6,18 @@ export const metadata = {
   description: "Public-facing results dashboard for M.I.N.D ensemble experiments"
 };
 
-const fontDisp = Bebas_Neue({
-  subsets: ["latin"],
-  weight: ["400"],
-  variable: "--font-disp"
-});
-
-const fontUi = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  variable: "--font-ui"
-});
-
-const fontSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  variable: "--font-sans"
-});
-
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${fontDisp.variable} ${fontUi.variable} ${fontSans.variable}`} suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Bebas+Neue&family=IBM+Plex+Sans:wght@300;400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body suppressHydrationWarning>
         {children}
       </body>
     </html>

@@ -33,10 +33,42 @@ export type DashboardData = {
   baselines: BaselineRow[];
   stats: StatsRow[];
   thresholds: number[];
+  moabb?: {
+    summary: MoabbSummaryRow[];
+    per_subject: MoabbPerSubjectRow[];
+    pipeline_stats: MoabbPipelineStatsRow[];
+  };
 };
 
 export type DashboardBundle = {
   datasets: Record<string, DashboardData>;
+};
+
+export type MoabbSummaryRow = {
+  pipeline: string;
+  score_mean: number;
+  score_sd: number;
+  n_subjects: number;
+};
+
+export type MoabbPerSubjectRow = {
+  pipeline: string;
+  subject: number;
+  score_mean: number;
+  score_sd: number;
+  n_folds: number;
+};
+
+export type MoabbPipelineStatsRow = {
+  pipeline_a: string;
+  pipeline_b: string;
+  n_subjects_used: number;
+  mean_a: number;
+  mean_b: number;
+  mean_diff_a_minus_b: number;
+  paired_t_pvalue: number;
+  levene_pvalue: number;
+  paired_cohens_d: number;
 };
 
 // In local dev, repo root is usually one level above `mind-dashboard/`.
@@ -116,6 +148,48 @@ function loadStatsFromAnyPaths(paths: string[]): StatsRow[] {
     mean_diff_conf_minus_best: Number(toNumber(r["mean_diff_conf_minus_best"])),
     paired_t_pvalue: Number(toNumber(r["paired_t_pvalue"])),
     levene_pvalue: Number(toNumber(r["levene_pvalue"]))
+  }));
+}
+
+function loadMoabbSummary(paths: string[]): MoabbSummaryRow[] {
+  const p = pickFirstExisting(paths);
+  if (!p) return [];
+  const rows = parseCSV(readText(p));
+  return rows.map((r) => ({
+    pipeline: r["pipeline"] || "",
+    score_mean: Number(toNumber(r["score_mean"])),
+    score_sd: Number(toNumber(r["score_sd"])),
+    n_subjects: Number(toNumber(r["n_subjects"]))
+  }));
+}
+
+function loadMoabbPerSubject(paths: string[]): MoabbPerSubjectRow[] {
+  const p = pickFirstExisting(paths);
+  if (!p) return [];
+  const rows = parseCSV(readText(p));
+  return rows.map((r) => ({
+    pipeline: r["pipeline"] || "",
+    subject: Number(toNumber(r["subject"])),
+    score_mean: Number(toNumber(r["score_mean"])),
+    score_sd: Number(toNumber(r["score_sd"])),
+    n_folds: Number(toNumber(r["n_folds"]))
+  }));
+}
+
+function loadMoabbPipelineStats(paths: string[]): MoabbPipelineStatsRow[] {
+  const p = pickFirstExisting(paths);
+  if (!p) return [];
+  const rows = parseCSV(readText(p));
+  return rows.map((r) => ({
+    pipeline_a: r["pipeline_a"] || "",
+    pipeline_b: r["pipeline_b"] || "",
+    n_subjects_used: Number(toNumber(r["n_subjects_used"])),
+    mean_a: Number(toNumber(r["mean_a"])),
+    mean_b: Number(toNumber(r["mean_b"])),
+    mean_diff_a_minus_b: Number(toNumber(r["mean_diff_a_minus_b"])),
+    paired_t_pvalue: Number(toNumber(r["paired_t_pvalue"])),
+    levene_pvalue: Number(toNumber(r["levene_pvalue"])),
+    paired_cohens_d: Number(toNumber(r["paired_cohens_d"]))
   }));
 }
 
@@ -216,11 +290,66 @@ function loadDataset3a(): DashboardData {
   };
 }
 
+function loadMoabbPhysionetMi(): DashboardData {
+  const base = ["moabb", "physionetmi"];
+
+  const summary = loadMoabbSummary([
+    path.join(MIND_DIR, "outputs", ...base, "results_summary.csv"),
+    path.join(PUBLIC_DATA_DIR, ...base, "results_summary.csv")
+  ]);
+  const perSubject = loadMoabbPerSubject([
+    path.join(MIND_DIR, "outputs", ...base, "results_per_subject.csv"),
+    path.join(PUBLIC_DATA_DIR, ...base, "results_per_subject.csv")
+  ]);
+  const stats = loadMoabbPipelineStats([
+    path.join(MIND_DIR, "outputs", ...base, "stats_tests_pipelines.csv"),
+    path.join(PUBLIC_DATA_DIR, ...base, "stats_tests_pipelines.csv")
+  ]);
+
+  return {
+    grids: {},
+    baselines: [],
+    stats: [],
+    thresholds: [],
+    moabb: { summary, per_subject: perSubject, pipeline_stats: stats }
+  };
+}
+
+function loadMoabbEnsemble(folderName: string): DashboardData {
+  const base = ["moabb_ensemble", folderName];
+  // Note: LDA-only is treated as a baseline, not an ensemble variant.
+  const gridFiles = ["LDA_SVM_equal_grid.csv", "LDA_SVM_subject_grid.csv", "LDA_SVM_RF_equal_grid.csv"];
+
+  const grids: Record<string, GridPoint[]> = {};
+  for (const f of gridFiles) {
+    grids[f] = loadGridFromPaths(
+      f,
+      path.join(MIND_DIR, "outputs", ...base, "ensemble_v2", f),
+      path.join(PUBLIC_DATA_DIR, ...base, f)
+    );
+  }
+
+  return {
+    grids,
+    baselines: loadBaselinesFromPaths(
+      path.join(MIND_DIR, "outputs", ...base, "classification_results.csv"),
+      path.join(PUBLIC_DATA_DIR, ...base, "classification_results.csv")
+    ),
+    stats: loadStatsFromPaths(
+      path.join(MIND_DIR, "outputs", ...base, "ensemble_v2", "stats_tests_confident_vs_best.csv"),
+      path.join(PUBLIC_DATA_DIR, ...base, "stats_tests_confident_vs_best.csv")
+    ),
+    thresholds: thresholdsFromGrids(grids)
+  };
+}
+
 export function loadDashboardBundle(): DashboardBundle {
   return {
     datasets: {
       "2a": loadDataset2a(),
-      "3a": loadDataset3a()
+      "3a": loadDataset3a(),
+      "moabb_ensemble_bnci2014_001": loadMoabbEnsemble("bnci2014_001"),
+      "moabb_ensemble_physionetmi": loadMoabbEnsemble("physionetmi")
     }
   };
 }
