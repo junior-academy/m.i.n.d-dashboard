@@ -936,6 +936,14 @@ export default function DashboardClient({ datasets }: Props) {
             {debouncedGridFiles.length > 0 ? (
               <div className="debouncedWrap">
                 <div className="debouncedLabel">Stability Controller (Debounced)</div>
+                <div className="table-note" style={{ marginTop: 0, marginBottom: 10, fontStyle: "normal" }}>
+                  “Debounced” = a device-style smoothing layer applied <b>after</b> model prediction to reduce jitter. It uses{" "}
+                  <b>hysteresis</b> (<code>t_on &gt; t_off</code>), <b>k-of-n confirmation</b> (e.g., 3-of-5), and a{" "}
+                  <b>latched class</b> while firing.
+                  <br />
+                  The headline metric here is <b>safe-fire</b> = <code>coverage − wrong-fire</code> (fraction of trials that fired{" "}
+                  <b>and</b> were correct). This section is intentionally <b>not</b> directly comparable to ensemble confident accuracy.
+                </div>
                 <div className="deb-grid">
                   {debouncedGridFiles.map((f) => {
                     const a = agg[f];
