@@ -8,6 +8,8 @@ export type GridPoint = {
   ensemble_acc_all: number;
   ensemble_acc_confident: number;
   ensemble_coverage: number;
+  toggle_rate?: number;
+  wrong_fire_rate_all?: number;
   ensemble_name?: string;
 };
 
@@ -19,6 +21,9 @@ export type StatsRow = {
   mean_ens_conf_acc: number;
   mean_best_single_acc: number;
   mean_diff_conf_minus_best: number;
+  diff_ci_low_95?: number;
+  diff_ci_high_95?: number;
+  paired_cohens_d?: number;
   paired_t_pvalue: number;
   levene_pvalue: number;
 };
@@ -103,6 +108,8 @@ function loadGridFromPaths(fileName: string, primary: string, fallback: string, 
     ensemble_acc_all: toNumber(r["ensemble_acc_all"]) as unknown as number,
     ensemble_acc_confident: toNumber(r["ensemble_acc_confident"]) as unknown as number,
     ensemble_coverage: toNumber(r["ensemble_coverage"]) as unknown as number,
+    toggle_rate: r["toggle_rate"] ? (toNumber(r["toggle_rate"]) as unknown as number) : Number.NaN,
+    wrong_fire_rate_all: r["wrong_fire_rate_all"] ? (toNumber(r["wrong_fire_rate_all"]) as unknown as number) : Number.NaN,
     ensemble_name: r["ensemble_name"] || ensembleName || fileName
   }));
 }
@@ -129,6 +136,9 @@ function loadStatsFromPaths(primary: string, fallback: string): StatsRow[] {
     mean_ens_conf_acc: Number(toNumber(r["mean_ens_conf_acc"])),
     mean_best_single_acc: Number(toNumber(r["mean_best_single_acc"])),
     mean_diff_conf_minus_best: Number(toNumber(r["mean_diff_conf_minus_best"])),
+    diff_ci_low_95: r["diff_ci_low_95"] ? Number(toNumber(r["diff_ci_low_95"])) : Number.NaN,
+    diff_ci_high_95: r["diff_ci_high_95"] ? Number(toNumber(r["diff_ci_high_95"])) : Number.NaN,
+    paired_cohens_d: r["paired_cohens_d"] ? Number(toNumber(r["paired_cohens_d"])) : Number.NaN,
     paired_t_pvalue: Number(toNumber(r["paired_t_pvalue"])),
     levene_pvalue: Number(toNumber(r["levene_pvalue"]))
   }));
@@ -146,6 +156,9 @@ function loadStatsFromAnyPaths(paths: string[]): StatsRow[] {
     mean_ens_conf_acc: Number(toNumber(r["mean_ens_conf_acc"])),
     mean_best_single_acc: Number(toNumber(r["mean_best_single_acc"])),
     mean_diff_conf_minus_best: Number(toNumber(r["mean_diff_conf_minus_best"])),
+    diff_ci_low_95: r["diff_ci_low_95"] ? Number(toNumber(r["diff_ci_low_95"])) : Number.NaN,
+    diff_ci_high_95: r["diff_ci_high_95"] ? Number(toNumber(r["diff_ci_high_95"])) : Number.NaN,
+    paired_cohens_d: r["paired_cohens_d"] ? Number(toNumber(r["paired_cohens_d"])) : Number.NaN,
     paired_t_pvalue: Number(toNumber(r["paired_t_pvalue"])),
     levene_pvalue: Number(toNumber(r["levene_pvalue"]))
   }));
@@ -214,7 +227,15 @@ function thresholdsFromGrids(grids: Record<string, GridPoint[]>): number[] {
 }
 
 function loadDataset2a(): DashboardData {
-  const gridFiles = ["LDA_SVM_equal_grid.csv", "LDA_SVM_baseline_subject_grid.csv", "LDA_SVM_RF_global_grid.csv"];
+  const gridFiles = [
+    "LDA_SVM_equal_grid.csv",
+    "LDA_SVM_baseline_subject_grid.csv",
+    "LDA_SVM_RF_global_grid.csv",
+    // Debounced stability-controller variants (may be missing; loader will return empty).
+    "LDA_SVM_equal_debounced_grid.csv",
+    "LDA_SVM_baseline_subject_debounced_grid.csv",
+    "LDA_SVM_RF_global_debounced_grid.csv"
+  ];
   const grids: Record<string, GridPoint[]> = {};
   for (const f of gridFiles) {
     grids[f] = loadGridFromPaths(
@@ -265,6 +286,19 @@ function loadDataset3a(): DashboardData {
       ),
       path.join(PUBLIC_DATA_DIR, "validation_3a", "LDA_SVM_baseline_subject_grid.csv"),
       "IIIa: LDA+SVM (subj-weights)"
+    ),
+    // Debounced stability-controller variants (copied by sync script if present).
+    "LDA_SVM_equal_debounced_grid.csv": loadGridFromPaths(
+      "LDA_SVM_equal_debounced_grid.csv",
+      path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "LDA_SVM_equal_debounced_grid.csv"),
+      path.join(PUBLIC_DATA_DIR, "validation_3a", "LDA_SVM_equal_debounced_grid.csv"),
+      "IIIa: LDA+SVM (equal, debounced)"
+    ),
+    "LDA_SVM_baseline_subject_debounced_grid.csv": loadGridFromPaths(
+      "LDA_SVM_baseline_subject_debounced_grid.csv",
+      path.join(MIND_DIR, "outputs", "validation_3a", "ensemble_v2", "LDA_SVM_baseline_subject_debounced_grid.csv"),
+      path.join(PUBLIC_DATA_DIR, "validation_3a", "LDA_SVM_baseline_subject_debounced_grid.csv"),
+      "IIIa: LDA+SVM (subj-weights, debounced)"
     )
   };
 

@@ -30,12 +30,72 @@ function mean(values: number[]): number {
   return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
+function tCrit95(df: number): number {
+  const table: Record<number, number> = {
+    1: 12.706,
+    2: 4.303,
+    3: 3.182,
+    4: 2.776,
+    5: 2.571,
+    6: 2.447,
+    7: 2.365,
+    8: 2.306,
+    9: 2.262,
+    10: 2.228,
+    11: 2.201,
+    12: 2.179,
+    13: 2.160,
+    14: 2.145,
+    15: 2.131,
+    16: 2.120,
+    17: 2.110,
+    18: 2.101,
+    19: 2.093,
+    20: 2.086,
+    21: 2.080,
+    22: 2.074,
+    23: 2.069,
+    24: 2.064,
+    25: 2.060,
+    26: 2.056,
+    27: 2.052,
+    28: 2.048,
+    29: 2.045,
+    30: 2.042
+  };
+  return table[df] ?? 1.96;
+}
+
+function ci95Mean(values: number[]): { low: number; high: number } {
+  const xs = values.filter((v) => Number.isFinite(v));
+  const n = xs.length;
+  if (n === 0) return { low: Number.NaN, high: Number.NaN };
+  const m = mean(xs);
+  if (n < 2) return { low: m, high: m };
+  const sd = Math.sqrt(mean(xs.map((v) => (v - m) * (v - m))) * (n / (n - 1))); // unbiased sample sd
+  const sem = sd / Math.sqrt(n);
+  const t = tCrit95(n - 1);
+  return { low: m - t * sem, high: m + t * sem };
+}
+
+function pairedCohensD(diffs: number[]): number {
+  const xs = diffs.filter((v) => Number.isFinite(v));
+  const n = xs.length;
+  if (n < 2) return Number.NaN;
+  const m = mean(xs);
+  const sd = Math.sqrt(mean(xs.map((v) => (v - m) * (v - m))) * (n / (n - 1)));
+  if (!Number.isFinite(sd) || sd === 0) return Number.NaN;
+  return m / sd;
+}
+
 function aggregateAt(points: GridPoint[], thr: number) {
   const sub = points.filter((p) => p.threshold === thr);
   return {
     meanCoverage: mean(sub.map((p) => p.ensemble_coverage)),
     meanConfAcc: mean(sub.map((p) => p.ensemble_acc_confident)),
-    meanAllAcc: mean(sub.map((p) => p.ensemble_acc_all))
+    meanAllAcc: mean(sub.map((p) => p.ensemble_acc_all)),
+    meanToggle: mean(sub.map((p) => p.toggle_rate ?? Number.NaN)),
+    meanWrongFireAll: mean(sub.map((p) => p.wrong_fire_rate_all ?? Number.NaN))
   };
 }
 
@@ -56,6 +116,11 @@ function datasetLabel(k: string): string {
   if (k === "moabb_ensemble_bnci2014_001") return "MOABB Ensemble (BNCI2014_001, 4-class)";
   if (k === "moabb_ensemble_physionetmi") return "MOABB Ensemble (PhysionetMI, 2-class)";
   return k;
+}
+
+function formatCI(low: number | undefined, high: number | undefined): string {
+  if (!Number.isFinite(low) || !Number.isFinite(high)) return "NA";
+  return `[${Number(low).toFixed(3)}, ${Number(high).toFixed(3)}]`;
 }
 
 function MoabbPanel(props: {
@@ -242,7 +307,10 @@ export default function DashboardClient({ datasets }: Props) {
   });
 
   useEffect(() => {
-    const nextGrid = data.grids["LDA_SVM_equal_grid.csv"] ? "LDA_SVM_equal_grid.csv" : (Object.keys(data.grids)[0] ?? "");
+    const hasEqual = (data.grids["LDA_SVM_equal_grid.csv"] ?? []).length > 0;
+    const firstNonEmptyEnsemble =
+      Object.keys(data.grids).find((k) => (data.grids[k] ?? []).length > 0 && !k.includes("debounced")) ?? "";
+    const nextGrid = hasEqual ? "LDA_SVM_equal_grid.csv" : firstNonEmptyEnsemble;
     if (nextGrid) setSelectedGrid(nextGrid);
     if (data.thresholds.length > 0) {
       const defaultThr = data.thresholds.includes(0.6) ? 0.6 : data.thresholds[0];
@@ -252,11 +320,23 @@ export default function DashboardClient({ datasets }: Props) {
 
   const thr = useMemo(() => pickClosest(data.thresholds, threshold), [data.thresholds, threshold]);
   const gridFiles = Object.keys(data.grids);
+  const availableGridFiles = useMemo(
+    () => gridFiles.filter((f) => (data.grids[f] ?? []).length > 0),
+    [data.grids, gridFiles]
+  );
+  const ensembleGridFiles = useMemo(
+    () => availableGridFiles.filter((f) => !f.includes("debounced")),
+    [availableGridFiles]
+  );
+  const debouncedGridFiles = useMemo(
+    () => availableGridFiles.filter((f) => f.includes("debounced")),
+    [availableGridFiles]
+  );
   const agg = useMemo(() => {
     const out: Record<string, ReturnType<typeof aggregateAt>> = {};
-    for (const f of gridFiles) out[f] = aggregateAt(data.grids[f], thr);
+    for (const f of availableGridFiles) out[f] = aggregateAt(data.grids[f], thr);
     return out;
-  }, [gridFiles, data.grids, thr]);
+  }, [availableGridFiles, data.grids, thr]);
 
   const baselineBySubject = useMemo(() => {
     const m = new Map<number, number>();
@@ -290,6 +370,60 @@ export default function DashboardClient({ datasets }: Props) {
   const baselineMeanAtSelection = useMemo(() => {
     return mean(perSubjectRows.map((r) => r.bestSingle));
   }, [perSubjectRows]);
+
+  const lockedCandidateThresholds = useMemo(() => [0.6, 0.65, 0.7, 0.75], []);
+
+  // Locked policy selection (choose t* on 2a only, then evaluate other datasets at that fixed t*).
+  const lockedThreshold = useMemo(() => {
+    const src = datasets["2a"];
+    if (!src) return Number.NaN;
+    const pts = src.grids[selectedGrid] ?? [];
+    if (pts.length === 0) return Number.NaN;
+
+    // Compute mean delta (conf acc - best) per threshold, and select the best subject to a coverage constraint.
+    const baseBySub = new Map<number, number>();
+    for (const b of src.baselines) baseBySub.set(b.subject, b.best_acc);
+
+    const byThr = new Map<number, { cov: number[]; delta: number[] }>();
+    for (const p of pts) {
+      const best = baseBySub.get(p.subject);
+      if (!Number.isFinite(best)) continue;
+      const cur = byThr.get(p.threshold) ?? { cov: [], delta: [] };
+      cur.cov.push(p.ensemble_coverage);
+      cur.delta.push(p.ensemble_acc_confident - Number(best));
+      byThr.set(p.threshold, cur);
+    }
+    const rows = Array.from(byThr.entries())
+      .map(([t, v]) => ({ t, cov: mean(v.cov), delta: mean(v.delta) }))
+      .filter((r) => Number.isFinite(r.t) && Number.isFinite(r.delta) && Number.isFinite(r.cov))
+      .sort((a, b) => a.t - b.t);
+    if (rows.length === 0) return Number.NaN;
+
+    const C_MIN = 0.45;
+    const allowed = rows.filter((r) => lockedCandidateThresholds.includes(Number(r.t)));
+    const search = allowed.length > 0 ? allowed : rows;
+    const feasible = search.filter((r) => r.cov >= C_MIN);
+    const pool = feasible.length > 0 ? feasible : search;
+    let best = pool[0];
+    for (const r of pool.slice(1)) {
+      if (r.delta > best.delta) best = r;
+    }
+    return best.t;
+  }, [datasets, lockedCandidateThresholds, selectedGrid]);
+
+  const lockedThrSnap = useMemo(() => pickClosest(data.thresholds, lockedThreshold), [data.thresholds, lockedThreshold]);
+  const lockedAgg = useMemo(() => aggregateAt((data.grids[selectedGrid] ?? []), lockedThrSnap), [data.grids, lockedThrSnap, selectedGrid]);
+  const lockedStats = useMemo(() => findStats(data.stats, selectedGrid, lockedThrSnap), [data.stats, lockedThrSnap, selectedGrid]);
+  const lockedQuick = useMemo(() => {
+    const pts = data.grids[selectedGrid] ?? [];
+    const at = pts.filter((p) => p.threshold === lockedThrSnap);
+    const diffs = at.map((p) => {
+      const best = baselineBySubject.get(p.subject);
+      return Number.isFinite(best) ? p.ensemble_acc_confident - Number(best) : Number.NaN;
+    });
+    const ci = ci95Mean(diffs);
+    return { d: pairedCohensD(diffs), ciLow: ci.low, ciHigh: ci.high };
+  }, [baselineBySubject, data.grids, lockedThrSnap, selectedGrid]);
 
   const tradeoffSeries = useMemo(() => {
     const pts = data.grids[selectedGrid] ?? [];
@@ -563,7 +697,7 @@ export default function DashboardClient({ datasets }: Props) {
             <div className="control-row">
               <div className="ctrl-label">Ensemble</div>
               <select value={selectedGrid} onChange={(e) => setSelectedGrid(e.target.value)}>
-                {gridFiles.map((f) => (
+                {ensembleGridFiles.map((f) => (
                   <option key={f} value={f}>
                     {f.replace("_grid.csv", "")}
                   </option>
@@ -571,6 +705,41 @@ export default function DashboardClient({ datasets }: Props) {
               </select>
               <span className="ctrl-hint">tradeoff: accuracy vs coverage</span>
             </div>
+
+            {Number.isFinite(lockedThreshold) && ensembleGridFiles.includes(selectedGrid) ? (
+              <div className="ens-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginTop: 14 }}>
+                <div className="ens-card active" style={{ cursor: "default" }}>
+                  <div className="ens-name">Locked Policy (picked on 2a)</div>
+                  <div className="ens-value">t* = {Number(lockedThreshold).toFixed(2)}</div>
+                  <div className="ens-stats">
+                    constraint <b>coverage ≥ 0.45</b>
+                    <br />
+                    candidates <b>0.60/0.65/0.70/0.75</b>
+                    <br />
+                    apply once to IIIa/MOABB
+                  </div>
+                </div>
+                <div className="ens-card active" style={{ cursor: "default" }}>
+                  <div className="ens-name">This Dataset @ t*</div>
+                  <div className="ens-value">{round3(lockedAgg.meanConfAcc)}</div>
+                  <div className="ens-stats">
+                    coverage <b>{round3(lockedAgg.meanCoverage)}</b>
+                    <br />
+                    Δconf-best <b>{lockedStats ? round3(lockedStats.mean_diff_conf_minus_best) : "NA"}</b>
+                    <br />
+                    p <b>{lockedStats ? round3(lockedStats.paired_t_pvalue) : "NA"}</b> · d{" "}
+                    <b>{lockedStats ? round3(lockedStats.paired_cohens_d ?? Number.NaN) : round3(lockedQuick.d)}</b>
+                    <br />
+                    95% CI{" "}
+                    <b>
+                      {lockedStats && Number.isFinite(lockedStats.diff_ci_low_95) && Number.isFinite(lockedStats.diff_ci_high_95)
+                        ? formatCI(lockedStats.diff_ci_low_95, lockedStats.diff_ci_high_95)
+                        : formatCI(lockedQuick.ciLow, lockedQuick.ciHigh)}
+                    </b>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="chart-wrap">
               <div className="chart-y-label">CONF ACC</div>
@@ -723,10 +892,29 @@ export default function DashboardClient({ datasets }: Props) {
                   compare with selected ensemble card
                 </div>
               </div>
-              {gridFiles.map((f) => {
+              {ensembleGridFiles.map((f) => {
                 const a = agg[f];
                 const st = findStats(data.stats, f, thr);
                 const active = f === selectedGrid;
+
+                const quick = (() => {
+                  const pts = data.grids[f] ?? [];
+                  const at = pts.filter((p) => p.threshold === thr);
+                  const diffs = at.map((p) => {
+                    const best = baselineBySubject.get(p.subject);
+                    return Number.isFinite(best) ? p.ensemble_acc_confident - Number(best) : Number.NaN;
+                  });
+                  const ci = ci95Mean(diffs);
+                  return { d: pairedCohensD(diffs), ciLow: ci.low, ciHigh: ci.high };
+                })();
+
+                const ciText =
+                  st && Number.isFinite(st.diff_ci_low_95) && Number.isFinite(st.diff_ci_high_95)
+                    ? formatCI(st.diff_ci_low_95, st.diff_ci_high_95)
+                    : formatCI(quick.ciLow, quick.ciHigh);
+
+                const dText = st && Number.isFinite(st.paired_cohens_d) ? round3(Number(st.paired_cohens_d)) : round3(quick.d);
+
                 return (
                   <button key={f} className={`ens-card ${active ? "active" : ""}`} onClick={() => setSelectedGrid(f)}>
                     <div className="ens-name">{f.replace("_grid.csv", "")}</div>
@@ -735,12 +923,47 @@ export default function DashboardClient({ datasets }: Props) {
                       coverage <b>{round3(a.meanCoverage)}</b>
                       <br />
                       all-acc <b>{round3(a.meanAllAcc)}</b>
-                      <br />t p <b>{st ? round3(st.paired_t_pvalue) : "NA"}</b> · Levene <b>{st ? round3(st.levene_pvalue) : "NA"}</b>
+                      <br />
+                      p <b>{st ? round3(st.paired_t_pvalue) : "NA"}</b> · d <b>{dText}</b>
+                      <br />
+                      CI <b>{ciText}</b>
                     </div>
                   </button>
                 );
               })}
             </div>
+
+            {debouncedGridFiles.length > 0 ? (
+              <div className="debouncedWrap">
+                <div className="debouncedLabel">Stability Controller (Debounced)</div>
+                <div className="deb-grid">
+                  {debouncedGridFiles.map((f) => {
+                    const a = agg[f];
+                    const safeFire =
+                      Number.isFinite(a.meanCoverage) && Number.isFinite(a.meanWrongFireAll)
+                        ? a.meanCoverage - a.meanWrongFireAll
+                        : Number.NaN;
+                    return (
+                      <div key={f} className="deb-card">
+                        <div className="deb-name">{f.replace("_grid.csv", "")}</div>
+                        <div className="deb-value">{round3(safeFire)}</div>
+                        <div className="deb-stats">
+                          safe-fire <b>{round3(safeFire)}</b>
+                          <br />
+                          coverage <b>{round3(a.meanCoverage)}</b> · wrong-fire <b>{round3(a.meanWrongFireAll)}</b>
+                          <br />
+                          toggle <b>{round3(a.meanToggle)}</b> · conf-acc <b>{round3(a.meanConfAcc)}</b>
+                          <br />
+                          <span style={{ color: "rgba(232,184,75,0.42)" }}>
+                            (stability metrics; not directly comparable to ensemble conf-acc)
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="section" style={{ flex: 1 }}>

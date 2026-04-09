@@ -389,6 +389,65 @@ svg.main-chart {
 
 .ens-stats b { color: var(--text-2); font-weight: 400; }
 
+/* ── STABILITY (DEBOUNCED) CARDS ── */
+.debouncedWrap { margin-top: 18px; }
+.debouncedLabel {
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  color: var(--yellow);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.debouncedLabel::after{
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(232,184,75,0.22), transparent);
+}
+.deb-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.deb-card{
+  appearance: none;
+  background: rgba(232,184,75,0.035);
+  border: 1px solid rgba(232,184,75,0.22);
+  border-radius: 2px;
+  padding: 14px;
+  text-align: left;
+  color: inherit;
+}
+.deb-name{
+  font-size: 0.74rem;
+  color: rgba(232,184,75,0.78);
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deb-value{
+  font-family: var(--font-disp);
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--yellow);
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+}
+.deb-stats{
+  font-size: 0.74rem;
+  color: rgba(232,184,75,0.50);
+  line-height: 1.8;
+}
+.deb-stats b{
+  color: var(--text-2);
+  font-weight: 400;
+}
+
 /* ── TABLE ── */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }

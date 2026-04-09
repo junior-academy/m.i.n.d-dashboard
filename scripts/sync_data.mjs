@@ -52,12 +52,42 @@ ensureDir(outData3a);
 ensureDir(outVis);
 ensureDir(outVis3a);
 
+// MOABB ensemble (dashboard-ready exports)
+const srcMoabbEns = path.join(srcMind, "outputs", "moabb_ensemble");
+const outMoabbEns = path.join(outData, "moabb_ensemble");
+ensureDir(outMoabbEns);
+
+for (const folder of ["bnci2014_001", "physionetmi"]) {
+  const srcFolder = path.join(srcMoabbEns, folder);
+  const outFolder = path.join(outMoabbEns, folder);
+  ensureDir(outFolder);
+
+  // Grid CSVs + baseline + stats (if present).
+  for (const f of [
+    "LDA_SVM_equal_grid.csv",
+    "LDA_SVM_subject_grid.csv",
+    "LDA_SVM_RF_equal_grid.csv",
+    "LDA_only_grid.csv",
+    "classification_results.csv",
+    "stats_tests_confident_vs_best.csv"
+  ]) {
+    const srcA = path.join(srcFolder, "ensemble_v2", f);
+    const srcB = path.join(srcFolder, f);
+    const src = fs.existsSync(srcA) ? srcA : srcB;
+    copy(src, path.join(outFolder, f));
+  }
+}
+
 // Grid CSVs
 for (const f of [
   "LDA_SVM_equal_grid.csv",
   "LDA_SVM_baseline_subject_grid.csv",
   "LDA_SVM_RF_global_grid.csv",
-  "LDA_SVM_stacking_grid.csv"
+  "LDA_SVM_stacking_grid.csv",
+  // Debounced (stability controller) variants
+  "LDA_SVM_equal_debounced_grid.csv",
+  "LDA_SVM_baseline_subject_debounced_grid.csv",
+  "LDA_SVM_RF_global_debounced_grid.csv"
 ]) {
   copy(path.join(srcEns, f), path.join(outData, f));
 }
@@ -89,6 +119,14 @@ copy(
   path.join(srcVal3a, "baselines", "classification_results.csv"),
   path.join(outData3a, "classification_results.csv")
 );
+
+// IIIa debounced grid CSVs (if present)
+for (const f of [
+  "LDA_SVM_equal_debounced_grid.csv",
+  "LDA_SVM_baseline_subject_debounced_grid.csv"
+]) {
+  copy(path.join(srcVal3a, "ensemble_v2", f), path.join(outData3a, f));
+}
 
 // IIIa stats tests (both variants + combined)
 copy(
