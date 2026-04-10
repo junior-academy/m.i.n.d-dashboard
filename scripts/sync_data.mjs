@@ -150,7 +150,11 @@ for (const f of [
   "mean_diff_conf_vs_best_vs_threshold.png",
   "per_subject_conf_acc_t0.60.png",
   "heatmap_ablation_global_diff_conf_minus_best.png",
-  "ensemble_coverage_vs_threshold.png"
+  "ensemble_coverage_vs_threshold.png",
+  // Stability-controller (debounced) plots (optional; generated if debounced grids exist)
+  "stability_toggle_rate_vs_threshold.png",
+  "stability_wrong_fire_vs_threshold.png",
+  "stability_safe_fire_vs_threshold.png"
 ]) {
   copy(path.join(srcVis, f), path.join(outVis, f));
 }
@@ -163,7 +167,11 @@ for (const f of [
   "mean_diff_conf_vs_best_vs_threshold.png",
   "per_subject_conf_acc_t0.60.png",
   "heatmap_ablation_global_diff_conf_minus_best.png",
-  "ensemble_coverage_vs_threshold.png"
+  "ensemble_coverage_vs_threshold.png",
+  // Stability-controller (debounced) plots (optional; generated if debounced grids exist)
+  "stability_toggle_rate_vs_threshold.png",
+  "stability_wrong_fire_vs_threshold.png",
+  "stability_safe_fire_vs_threshold.png"
 ]) {
   copy(path.join(srcVal3aVis, f), path.join(outVis3a, f));
 }

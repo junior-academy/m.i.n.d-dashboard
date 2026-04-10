@@ -99,6 +99,80 @@ function aggregateAt(points: GridPoint[], thr: number) {
   };
 }
 
+function selectDebouncedPolicy(points: GridPoint[], alpha: number) {
+  // Select controller parameters under a safety constraint.
+  // Primary constraint: mean wrong_fire_rate_all <= alpha.
+  // Primary objective: maximize mean safe_fire (= coverage - wrong_fire).
+  // Secondary objectives: minimize wrong_fire and toggle.
+  //
+  // If the CSV contains multiple (k,n,off_gap) configs at the same threshold, we treat each (t_on,t_off,k,n)
+  // as a separate candidate policy (instead of averaging them together).
+
+  const byCfg = new Map<
+    string,
+    { t_on: number; t_off: number; k: number; n: number; cov: number[]; wrong: number[]; toggle: number[] }
+  >();
+  for (const p of points) {
+    const t_on = p.threshold;
+    const t_off = Number.isFinite(p.t_off as number) ? (p.t_off as number) : Number.NaN;
+    const k = Number.isFinite(p.k as number) ? (p.k as number) : Number.NaN;
+    const n = Number.isFinite(p.n as number) ? (p.n as number) : Number.NaN;
+    const key = `${t_on}::${t_off}::${k}::${n}`;
+    const cur = byCfg.get(key) ?? { t_on, t_off, k, n, cov: [], wrong: [], toggle: [] };
+    cur.cov.push(p.ensemble_coverage);
+    cur.wrong.push(p.wrong_fire_rate_all ?? Number.NaN);
+    cur.toggle.push(p.toggle_rate ?? Number.NaN);
+    byCfg.set(key, cur);
+  }
+
+  const rows = Array.from(byCfg.values())
+    .map((v) => {
+      const meanCov = mean(v.cov);
+      const meanWrong = mean(v.wrong);
+      const meanToggle = mean(v.toggle);
+      const safeFire = Number.isFinite(meanCov) && Number.isFinite(meanWrong) ? meanCov - meanWrong : Number.NaN;
+      return {
+        t_on: v.t_on,
+        t_off: v.t_off,
+        k: v.k,
+        n: v.n,
+        meanCov,
+        meanWrong,
+        meanToggle,
+        safeFire
+      };
+    })
+    .filter((r) => Number.isFinite(r.t_on))
+    .sort((a, b) => a.t_on - b.t_on);
+
+  if (rows.length === 0) {
+    return {
+      t_on: Number.NaN,
+      t_off: Number.NaN,
+      k: Number.NaN,
+      n: Number.NaN,
+      meanCov: Number.NaN,
+      meanWrong: Number.NaN,
+      meanToggle: Number.NaN,
+      safeFire: Number.NaN,
+      feasible: false
+    };
+  }
+
+  const feasible = rows.filter((r) => Number.isFinite(r.meanWrong) && r.meanWrong <= alpha);
+  const pool = feasible.length > 0 ? feasible : rows;
+
+  let best = pool[0];
+  for (const r of pool.slice(1)) {
+    // Primary objective: maximize safe fire. Secondary: minimize wrong-fire. Tertiary: minimize toggle.
+    if ((r.safeFire ?? -1) > (best.safeFire ?? -1)) best = r;
+    else if (r.safeFire === best.safeFire && (r.meanWrong ?? 1) < (best.meanWrong ?? 1)) best = r;
+    else if (r.safeFire === best.safeFire && r.meanWrong === best.meanWrong && (r.meanToggle ?? 1) < (best.meanToggle ?? 1)) best = r;
+  }
+
+  return { ...best, feasible: feasible.length > 0 };
+}
+
 function findStats(stats: StatsRow[], gridFile: string, thr: number): StatsRow | undefined {
   const exact = stats.find((r) => r.grid_file === gridFile && r.threshold === thr);
   if (exact) return exact;
@@ -452,7 +526,10 @@ export default function DashboardClient({ datasets }: Props) {
     ["Mean(Conf Acc − Best) vs Threshold", "mean_diff_conf_vs_best_vs_threshold.png"],
     ["Per-subject Conf Acc @ 0.60", "per_subject_conf_acc_t0.60.png"],
     ["Heatmap (Ablation Global) ΔConf vs Best", "heatmap_ablation_global_diff_conf_minus_best.png"],
-    ["Coverage vs Threshold", "ensemble_coverage_vs_threshold.png"]
+    ["Coverage vs Threshold", "ensemble_coverage_vs_threshold.png"],
+    ["Stability: Toggle Rate vs Threshold", "stability_toggle_rate_vs_threshold.png"],
+    ["Stability: Wrong-Fire vs Threshold", "stability_wrong_fire_vs_threshold.png"],
+    ["Stability: Safe-Fire vs Threshold", "stability_safe_fire_vs_threshold.png"]
   ] as const;
 
   const rightPlots = plots.slice(0, 2);
@@ -723,7 +800,11 @@ export default function DashboardClient({ datasets }: Props) {
                   <div className="ens-name">This Dataset @ t*</div>
                   <div className="ens-value">{round3(lockedAgg.meanConfAcc)}</div>
                   <div className="ens-stats">
+                    Best‑Single mean <b>{round3(baselineMeanAll)}</b>
+                    <br />
                     coverage <b>{round3(lockedAgg.meanCoverage)}</b>
+                    <br />
+                    all‑acc <b>{round3(lockedAgg.meanAllAcc)}</b>
                     <br />
                     Δconf-best <b>{lockedStats ? round3(lockedStats.mean_diff_conf_minus_best) : "NA"}</b>
                     <br />
@@ -946,21 +1027,31 @@ export default function DashboardClient({ datasets }: Props) {
                 </div>
                 <div className="deb-grid">
                   {debouncedGridFiles.map((f) => {
-                    const a = agg[f];
-                    const safeFire =
-                      Number.isFinite(a.meanCoverage) && Number.isFinite(a.meanWrongFireAll)
-                        ? a.meanCoverage - a.meanWrongFireAll
-                        : Number.NaN;
+                    const pts = data.grids[f] ?? [];
+                    const policy = selectDebouncedPolicy(pts, 0.05);
                     return (
                       <div key={f} className="deb-card">
                         <div className="deb-name">{f.replace("_grid.csv", "")}</div>
-                        <div className="deb-value">{round3(safeFire)}</div>
+                        <div className="deb-value">{round3(policy.safeFire)}</div>
                         <div className="deb-stats">
-                          safe-fire <b>{round3(safeFire)}</b>
+                          α=0.05 policy{" "}
+                          <b>
+                            t_on {Number.isFinite(policy.t_on) ? policy.t_on.toFixed(2) : "NA"}
+                          </b>{" "}
+                          ·{" "}
+                          <b>
+                            t_off {Number.isFinite(policy.t_off) ? policy.t_off.toFixed(2) : "NA"}
+                          </b>{" "}
+                          ·{" "}
+                          <b>
+                            {Number.isFinite(policy.k) && Number.isFinite(policy.n) ? `${Math.round(policy.k)}-of-${Math.round(policy.n)}` : "k/n NA"}
+                          </b>
                           <br />
-                          coverage <b>{round3(a.meanCoverage)}</b> · wrong-fire <b>{round3(a.meanWrongFireAll)}</b>
+                          safe-fire <b>{round3(policy.safeFire)}</b> · wrong-fire <b>{round3(policy.meanWrong)}</b> · coverage{" "}
+                          <b>{round3(policy.meanCov)}</b>
                           <br />
-                          toggle <b>{round3(a.meanToggle)}</b> · conf-acc <b>{round3(a.meanConfAcc)}</b>
+                          toggle <b>{round3(policy.meanToggle)}</b> · feasible{" "}
+                          <b>{policy.feasible ? "YES" : "NO (best-effort)"}</b>
                           <br />
                           <span style={{ color: "rgba(232,184,75,0.42)" }}>
                             (stability metrics; not directly comparable to ensemble conf-acc)

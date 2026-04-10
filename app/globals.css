@@ -14,9 +14,10 @@
   --magenta:     #e8257a;
   --mag-soft:    rgba(232,37,122,0.08);
   --mag-glow:    rgba(232,37,122,0.22);
-  --text:        #b8cdd0;
-  --text-2:      #6a8a90;
-  --text-3:      #2e4a50;
+  /* Readability: slightly higher contrast on dark panels */
+  --text:        #d7ecef;
+  --text-2:      #97b8be;
+  --text-3:      #4a6b72;
   --green:       #00c98a;
   --yellow:      #e8b84b;
   --blue:        #4a8fff;
@@ -26,7 +27,7 @@
   --font-disp: "Bebas Neue", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
 }
 
-html { font-size: 13px; }
+html { font-size: 14px; }
 
 body {
   background: var(--bg);
@@ -34,6 +35,7 @@ body {
   font-family: var(--font-ui);
   min-height: 100vh;
   overflow-x: hidden;
+  line-height: 1.35;
 }
 
 /* Subtle radial ambient */
@@ -76,7 +78,7 @@ button { font-family: inherit; }
 
 .topbar-title {
   font-family: var(--font-ui);
-  font-size: 0.72rem; font-weight: 500;
+  font-size: 0.78rem; font-weight: 500;
   letter-spacing: 0.16em;
   color: var(--text);
 }
@@ -128,7 +130,7 @@ button { font-family: inherit; }
   background: var(--panel);
   color: var(--text-2);
   font-family: var(--font-ui);
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   letter-spacing: 0.14em;
   padding: 7px 12px;
   border-radius: 2px;
@@ -218,7 +220,7 @@ button { font-family: inherit; }
 /* ── SECTION HEADER ── */
 .sec-label {
   font-family: var(--font-ui);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -292,7 +294,7 @@ select {
 
 select:hover { border-color: var(--border-hi); }
 
-.ctrl-hint { font-size: 0.68rem; color: var(--text-3); letter-spacing: 0.02em; }
+.ctrl-hint { font-size: 0.72rem; color: var(--text-2); letter-spacing: 0.02em; }
 
 /* ── CHART ── */
 .chart-wrap {
@@ -359,7 +361,7 @@ svg.main-chart {
 }
 
 .ens-name {
-  font-size: 0.74rem; color: var(--text-3);
+  font-size: 0.74rem; color: var(--text-2);
   letter-spacing: 0.05em; margin-bottom: 8px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -383,7 +385,7 @@ svg.main-chart {
 .ens-card.baseline-card .ens-value { color: var(--magenta); }
 
 .ens-stats {
-  font-size: 0.74rem; color: var(--text-3);
+  font-size: 0.74rem; color: var(--text-2);
   line-height: 1.8;
 }
 
@@ -456,7 +458,7 @@ thead th {
   font-size: 0.74rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--text-2);
   padding: 0 12px 12px;
   text-align: left;
   font-weight: 400;
@@ -483,7 +485,7 @@ td.pos { color: var(--green); }
 td.neg { color: var(--magenta); }
 
 .table-note {
-  font-size: 0.74rem; color: var(--text-3);
+  font-size: 0.74rem; color: var(--text-2);
   margin-top: 14px; line-height: 1.8; font-style: italic;
 }
 

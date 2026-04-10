@@ -10,6 +10,10 @@ export type GridPoint = {
   ensemble_coverage: number;
   toggle_rate?: number;
   wrong_fire_rate_all?: number;
+  t_on?: number;
+  t_off?: number;
+  k?: number;
+  n?: number;
   ensemble_name?: string;
 };
 
@@ -110,6 +114,10 @@ function loadGridFromPaths(fileName: string, primary: string, fallback: string, 
     ensemble_coverage: toNumber(r["ensemble_coverage"]) as unknown as number,
     toggle_rate: r["toggle_rate"] ? (toNumber(r["toggle_rate"]) as unknown as number) : Number.NaN,
     wrong_fire_rate_all: r["wrong_fire_rate_all"] ? (toNumber(r["wrong_fire_rate_all"]) as unknown as number) : Number.NaN,
+    t_on: r["t_on"] ? (toNumber(r["t_on"]) as unknown as number) : Number.NaN,
+    t_off: r["t_off"] ? (toNumber(r["t_off"]) as unknown as number) : Number.NaN,
+    k: r["k"] ? (toNumber(r["k"]) as unknown as number) : Number.NaN,
+    n: r["n"] ? (toNumber(r["n"]) as unknown as number) : Number.NaN,
     ensemble_name: r["ensemble_name"] || ensembleName || fileName
   }));
 }
