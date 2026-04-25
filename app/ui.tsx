@@ -488,6 +488,10 @@ export default function DashboardClient({ datasets }: Props) {
   const lockedThrSnap = useMemo(() => pickClosest(data.thresholds, lockedThreshold), [data.thresholds, lockedThreshold]);
   const lockedAgg = useMemo(() => aggregateAt((data.grids[selectedGrid] ?? []), lockedThrSnap), [data.grids, lockedThrSnap, selectedGrid]);
   const lockedStats = useMemo(() => findStats(data.stats, selectedGrid, lockedThrSnap), [data.stats, lockedThrSnap, selectedGrid]);
+  const lockedBestSingleMean = useMemo(
+    () => (lockedStats && Number.isFinite(lockedStats.mean_best_single_acc) ? lockedStats.mean_best_single_acc : baselineMeanAll),
+    [baselineMeanAll, lockedStats]
+  );
   const lockedQuick = useMemo(() => {
     const pts = data.grids[selectedGrid] ?? [];
     const at = pts.filter((p) => p.threshold === lockedThrSnap);
@@ -800,7 +804,7 @@ export default function DashboardClient({ datasets }: Props) {
                   <div className="ens-name">This Dataset @ t*</div>
                   <div className="ens-value">{round3(lockedAgg.meanConfAcc)}</div>
                   <div className="ens-stats">
-                    Best‑Single mean <b>{round3(baselineMeanAll)}</b>
+                    Best‑Single mean <b>{round3(lockedBestSingleMean)}</b>
                     <br />
                     coverage <b>{round3(lockedAgg.meanCoverage)}</b>
                     <br />
@@ -968,7 +972,8 @@ export default function DashboardClient({ datasets }: Props) {
                 <div className="ens-stats">
                   selected subjects <b>{perSubjectRows.length}</b>
                   <br />
-                  global baseline mean <b>{round3(baselineMeanAll)}</b>
+                  global baseline mean (stats-locked){" "}
+                  <b>{round3(findStats(data.stats, selectedGrid, thr)?.mean_best_single_acc ?? baselineMeanAll)}</b>
                   <br />
                   compare with selected ensemble card
                 </div>
