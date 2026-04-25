@@ -5,6 +5,7 @@ import type { DashboardData, GridPoint, MoabbPipelineStatsRow, MoabbPerSubjectRo
 
 type Props = { datasets: Record<string, DashboardData> };
 const DASHBOARD_GITHUB_URL = "https://github.com/junior-academy/m.i.n.d-dashboard";
+const LIVE_DEMO_URL = "https://m-i-n-d-dashboard.vercel.app/";
 
 function round3(x: number) {
   if (!Number.isFinite(x)) return "NA";
@@ -256,7 +257,12 @@ function MoabbPanel(props: {
       <div className="shell shellSingle">
         <div className="col">
           <div className="section">
-            <div className="sec-label">External Validation</div>
+            <div className="sec-label">
+              External Validation
+              <a href={LIVE_DEMO_URL} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
+                LIVE DEMO
+              </a>
+            </div>
 
             <div className="control-row">
               <div className="ctrl-label">Dataset</div>
@@ -297,7 +303,12 @@ function MoabbPanel(props: {
           </div>
 
           <div className="section" style={{ flex: 1 }}>
-            <div className="sec-label">MOABB Results</div>
+            <div className="sec-label">
+              MOABB Results
+              <a href={LIVE_DEMO_URL} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
+                LIVE DEMO
+              </a>
+            </div>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -638,7 +649,12 @@ export default function DashboardClient({ datasets }: Props) {
 
         <div className="graphsShell">
           <div className="graphsDemo">
-            <div className="sec-label">Pygame Demo</div>
+            <div className="sec-label">
+              Pygame Demo
+              <a href={LIVE_DEMO_URL} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
+                LIVE DEMO
+              </a>
+            </div>
             <div className="demo-frame demo-frame-lg">
               <video
                 className="demo-video"
@@ -656,7 +672,12 @@ export default function DashboardClient({ datasets }: Props) {
           </div>
 
           <div className="graphsKey">
-            <div className="sec-label">Key Plots</div>
+            <div className="sec-label">
+              Key Plots
+              <a href={LIVE_DEMO_URL} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
+                LIVE DEMO
+              </a>
+            </div>
             <div className="graphsKeyGrid">
               {rightPlots.map(([label, file]) => (
                 <div key={file} className="plot-item">
@@ -676,7 +697,12 @@ export default function DashboardClient({ datasets }: Props) {
           </div>
 
           <div className="graphsBottom">
-            <div className="sec-label">More Plots</div>
+            <div className="sec-label">
+              More Plots
+              <a href={LIVE_DEMO_URL} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
+                LIVE DEMO
+              </a>
+            </div>
             <div className="graphsBottomGrid">
               {bottomPlots.map(([label, file]) => (
                 <div key={file} className="plot-item">
@@ -753,7 +779,12 @@ export default function DashboardClient({ datasets }: Props) {
         {/* LEFT */}
         <div className="col">
           <div className="section">
-            <div className="sec-label">Operating Point</div>
+            <div className="sec-label">
+              Operating Point
+              <a href={LIVE_DEMO_URL} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
+                LIVE DEMO
+              </a>
+            </div>
 
             <div className="control-row">
               <div className="ctrl-label">Dataset</div>
@@ -1033,12 +1064,16 @@ export default function DashboardClient({ datasets }: Props) {
               <div className="debouncedWrap">
                 <div className="debouncedLabel">Stability Controller (Debounced)</div>
                 <div className="table-note" style={{ marginTop: 0, marginBottom: 10, fontStyle: "normal" }}>
-                  “Debounced” = a device-style smoothing layer applied <b>after</b> model prediction to reduce jitter. It uses{" "}
-                  <b>hysteresis</b> (<code>t_on &gt; t_off</code>), <b>k-of-n confirmation</b> (e.g., 3-of-5), and a{" "}
-                  <b>latched class</b> while firing.
+                  Think of this like a spam filter for movement commands.
                   <br />
-                  The headline metric here is <b>safe-fire</b> = <code>coverage − wrong-fire</code> (fraction of trials that fired{" "}
-                  <b>and</b> were correct). This section is intentionally <b>not</b> directly comparable to ensemble confident accuracy.
+                  Instead of reacting to every tiny signal change, the system waits for a signal that is strong and consistent
+                  before it acts. This helps prevent shaky, accidental actions.
+                  <br />
+                  <b>safe-fire</b> means: out of all attempts, how often did the system act <b>and</b> get it right.
+                  It is calculated as <code>coverage - wrong-fire</code>.
+                  <br />
+                  This number answers a different question than regular model accuracy, so it should not be compared 1-to-1
+                  with ensemble confident accuracy.
                 </div>
                 <div className="deb-grid">
                   {debouncedGridFiles.map((f) => {
@@ -1081,7 +1116,12 @@ export default function DashboardClient({ datasets }: Props) {
           </div>
 
           <div className="section" style={{ flex: 1 }}>
-            <div className="sec-label">Per-Subject · Selected Ensemble</div>
+            <div className="sec-label">
+              Per-Subject · Selected Ensemble
+              <a href={LIVE_DEMO_URL} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
+                LIVE DEMO
+              </a>
+            </div>
             <div className="table-wrap">
               <table>
                 <thead>
