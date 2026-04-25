@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { DashboardData, GridPoint, MoabbPipelineStatsRow, MoabbPerSubjectRow, MoabbSummaryRow, StatsRow } from "@/lib/data";
 
 type Props = { datasets: Record<string, DashboardData> };
+const DASHBOARD_GITHUB_URL = "https://github.com/junior-academy/m.i.n.d-dashboard";
 
 function round3(x: number) {
   if (!Number.isFinite(x)) return "NA";
@@ -247,6 +248,9 @@ function MoabbPanel(props: {
           <div className="live-dot" />
           LIVE FROM `m.i.n.d/outputs/` · DATASET {selectedDataset.toUpperCase()}
         </div>
+        <a className="live-pill" href={DASHBOARD_GITHUB_URL} target="_blank" rel="noreferrer">
+          GITHUB: m.i.n.d-dashboard
+        </a>
       </header>
 
       <div className="shell shellSingle">
@@ -607,6 +611,9 @@ export default function DashboardClient({ datasets }: Props) {
             <div className="live-dot" />
             LIVE FROM `m.i.n.d/outputs/` · DATASET {selectedDataset.toUpperCase()}
           </div>
+          <a className="live-pill" href={DASHBOARD_GITHUB_URL} target="_blank" rel="noreferrer">
+            GITHUB: m.i.n.d-dashboard
+          </a>
         </header>
 
         <div className="tabsRow">
@@ -728,6 +735,9 @@ export default function DashboardClient({ datasets }: Props) {
           <div className="live-dot" />
           LIVE FROM `m.i.n.d/outputs/` · DATASET {selectedDataset.toUpperCase()}
         </div>
+        <a className="live-pill" href={DASHBOARD_GITHUB_URL} target="_blank" rel="noreferrer">
+          GITHUB: m.i.n.d-dashboard
+        </a>
       </header>
 
       <div className="tabsRow">
