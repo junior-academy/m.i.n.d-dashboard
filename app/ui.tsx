@@ -198,6 +198,20 @@ function formatCI(low: number | undefined, high: number | undefined): string {
   return `[${Number(low).toFixed(3)}, ${Number(high).toFixed(3)}]`;
 }
 
+function pctText(x: number): string {
+  if (!Number.isFinite(x)) return "NA";
+  return `${(x * 100).toFixed(1)}%`;
+}
+
+function debouncedQualityLabel(safeFire: number, wrongFire: number, feasible: boolean): string {
+  if (!feasible) return "Not safety-feasible yet";
+  if (!Number.isFinite(safeFire) || !Number.isFinite(wrongFire)) return "Insufficient data";
+  if (safeFire >= 0.15 && wrongFire <= 0.05) return "Strong";
+  if (safeFire >= 0.08 && wrongFire <= 0.05) return "Promising";
+  if (safeFire > 0 && wrongFire <= 0.05) return "Very conservative (safe but low action rate)";
+  return "Needs tuning";
+}
+
 function MoabbPanel(props: {
   datasetKeys: string[];
   selectedDataset: string;
@@ -1071,6 +1085,13 @@ export default function DashboardClient({ datasets }: Props) {
                           <br />
                           toggle <b>{round3(policy.meanToggle)}</b> · feasible{" "}
                           <b>{policy.feasible ? "YES" : "NO (best-effort)"}</b>
+                          <br />
+                          <b>Plain English:</b>{" "}
+                          out of 100 opportunities, this policy acts correctly about{" "}
+                          <b>{pctText(policy.safeFire)}</b>, acts incorrectly about{" "}
+                          <b>{pctText(policy.meanWrong)}</b>, and acts at all about{" "}
+                          <b>{pctText(policy.meanCov)}</b>.{" "}
+                          <b>{debouncedQualityLabel(policy.safeFire, policy.meanWrong, policy.feasible)}</b>.
                           <br />
                           <span style={{ color: "rgba(232,184,75,0.42)" }}>
                             (stability metrics; not directly comparable to ensemble conf-acc)
